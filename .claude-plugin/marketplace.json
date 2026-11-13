@@ -7,7 +7,7 @@
       "name": "reasoning-controller",
       "source": "./",
       "description": "Picks the effort level (low to max) for every task and sends it with each model request.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "license": "MIT",
       "keywords": ["effort", "reasoning", "auto"]
     }

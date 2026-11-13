@@ -26,7 +26,7 @@ Was es **nicht** gibt bzw. was die Mod bewusst **nicht** nutzt:
 
 ### Grenzen (bewusst dokumentiert, nicht vorgetäuscht)
 
-1. **Modelle mit Effort pro Nachricht** (`CLAUDE_CODE_MODEL_CAPABILITIES=per_turn_effort`): Laut API-Doku wird eine geänderte Stufe auf einem Schritt, der nur Tool-Ergebnisse enthält, nicht gesendet. Eine **Eskalation mitten im Auftrag wirkt dann erst ab der nächsten Benutzernachricht**. Die Mod erkennt diese Einstellung und meldet es Claude entsprechend.
+1. **Modelle mit Effort pro Nachricht** (`CLAUDE_CODE_MODEL_CAPABILITIES=per_turn_effort`): Laut API-Doku wird eine geänderte Stufe auf einem Schritt, der nur Tool-Ergebnisse enthält, nicht gesendet. Eine **Eskalation mitten im Auftrag wirkt dann erst ab der nächsten Benutzernachricht**. Die Mod liest diese Variable nicht; ihre Antwort an Claude nennt beide Fälle.
 2. **Prompt-Cache:** Bei Modellen mit Effort pro Anfrage (Standard) macht ein Stufenwechsel zwischen Aufträgen den Nachrichten-Cache ungültig. Deshalb gibt es eine Hysterese (knappe Entscheidungen behalten die alte Stufe), und in langen Verläufen (ab 40 Nachrichten) wird nicht um nur eine Stufe abgesenkt. Wer oft wechselt, kann auf der First-Party-API `CLAUDE_CODE_MODEL_CAPABILITIES=per_turn_effort` setzen (im `env` der User-Settings); dann ist der Wechsel cache-neutral.
 3. **Subagenten** behalten ihren eigenen Effort, der in ihrer Agent-Definition festgelegt ist. Die Mod steuert nur die Hauptkonversation.
 4. **Übergeordnete Grenzen bleiben wirksam:** Organisationsrichtlinien, die Einstellung `maxEffortLevel` und die Stufen des Modells. Claude Code senkt eine nicht unterstützte Stufe still ab. Die Mod wählt vorher selbst die nächstliegende unterstützte Stufe und zeigt das an.
@@ -53,8 +53,7 @@ Aufbau:
 | `hooks/lib/models.ts` | Effort-Stufen und Standard je Modellfamilie (erweiterbar) |
 | `hooks/lib/settings.ts` | Einstellungen (userConfig) mit Validierung |
 | `hooks/lib/format.ts` | Anzeigetexte, `/reasoning`-Parser und anonyme Statistik |
-| `hooks/ui.tsx` | Statuszeile über dem Prompt und Einstellungsfenster |
-| `hooks/register.tsx` | Verdrahtung der Hooks |
+| `hooks/register.tsx` | Verdrahtung der Hooks, Statuszeile über dem Prompt und Einstellungsfenster |
 
 ### Aufgabenanalyse (lokal, ohne KI-Aufruf)
 
@@ -153,6 +152,14 @@ Ist das Plugin [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle
 * Die Analyse läuft lokal mit Regeln. Es gibt **keine zusätzliche KI-Anfrage**, solange die KI-Klassifizierung aus ist.
 * Es wird **kein Prompt-Text gespeichert**. `$.state` (nur für die Sitzung) enthält die letzte Entscheidung als Eigenschaften. `$.store` (dauerhaft) enthält nur Zähler (Anzahl pro Stufe, Eskalationen, Überschreibungen).
 * Der Prompt wird nicht verändert. Effort-Konfiguration (`turn.step`) und Prompt sind strikt getrennt. Das Einzige, was das Modell zusätzlich sieht, ist die kurze Beschreibung des Eskalations-Tools (nur bei aktivierter Eskalation).
+* Die Mod liest keine Zugangsdaten und keine Umgebungsvariablen und stellt keine eigenen Netzwerkanfragen.
+
+### Was die Mod verändert
+
+* **Abgesendete Prompts:** nur bei `/reasoning <stufe> <auftrag>`. Dann wird der Text nach der Stufe **unverändert als dein eigener Prompt** abgesendet, ohne Zusätze.
+* **Einstellungen:** nur die eigenen acht `/config`-Zeilen (`reasoning-controller.<feld>`), und nur, wenn du sie über `/reasoning …` oder das Einstellungsfenster änderst. Umgebungsvariablen werden weder gesetzt noch gelesen.
+* **Tools:** nur das eigene `request_more_reasoning`. Alle anderen Tool-Aufrufe laufen unverändert durch.
+* **Hooks:** Die vollständige Liste mit dem Zweck jedes Hooks steht im englischen [README](../README.md#hooks).
 
 ---
 

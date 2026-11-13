@@ -11,8 +11,7 @@ Issues and pull requests are welcome.
 | `hooks/lib/models.ts` | Effort levels per model family: add new models here |
 | `hooks/lib/settings.ts` | `userConfig` parsing |
 | `hooks/lib/format.ts` | User-facing text and the `/reasoning` parser |
-| `hooks/ui.tsx` | Status line and settings pane |
-| `hooks/register.tsx` | Hook wiring (`turn.start`, `turn.step`, `tool.call`, …) |
+| `hooks/register.tsx` | Hook wiring (`turn.start`, `turn.step`, `tool.call`, …), status line and settings pane |
 | `types/index.d.ts` | `$.state` contract |
 
 ## Before a pull request

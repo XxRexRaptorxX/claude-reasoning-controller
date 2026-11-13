@@ -75,7 +75,7 @@ When [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle) is insta
 
 ## Limits
 
-- On models that take effort **per message** (`CLAUDE_CODE_MODEL_CAPABILITIES=per_turn_effort`), a mid-task escalation applies from the next user message.
+- On models that take effort **per message** (when you set `CLAUDE_CODE_MODEL_CAPABILITIES=per_turn_effort` yourself; the mod does not read or set it), a mid-task escalation applies from the next user message.
 - On models that take effort per request (the default), changing the level between tasks invalidates the messages prompt cache. That is why the mod avoids needless switches.
 - Subagents keep their own effort, as their definitions set it.
 - Organization policy, the `maxEffortLevel` setting and model capabilities still apply on top.
@@ -86,6 +86,40 @@ When [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle) is insta
 - **No prompt text is stored.** Session state holds only task traits. The persistent store holds counts only (levels, escalations, overrides).
 - No extra model calls unless you enable the optional AI classification. That sends the first 4,000 characters of an unclear prompt to Claude Code's small, fast model.
 - The only thing the model sees from this mod is the short description of the escalation tool, and only while escalation is enabled.
+- The mod reads no credentials and no environment variables, and it makes no network requests of its own.
+
+## What the mod changes
+
+### Prompts it submits
+
+The mod submits a prompt in exactly one case: `/reasoning <level> <task>`. It then submits the text after the level (`<task>`) **unchanged, as your own prompt**, with nothing added, removed or rewritten. Before that, it notes `<level>` as the level for that task. The mod never modifies, extends or replaces any prompt you type, and it adds no reasoning instructions to the system prompt.
+
+### Configuration and environment
+
+- **Configuration:** the mod writes only its **own** settings, which are the eight `/config` rows listed under *Usage* (stored by Claude Code in `settings.json` under `pluginConfigs`, keys `reasoning-controller.<field>`). It writes them only when you change one through `/reasoning mode|max-level|min-level|priority|manual|escalation|display|ai …` or the `/reasoning settings` pane. It never writes any other setting.
+- **Environment variables:** none are set or read.
+- **Effort:** the effort level is not written to any setting. It is passed per request through `turn.step` (see *How it works*), so `/effort` and your settings files stay as they are.
+
+### Tools
+
+The mod adds one tool, `request_more_reasoning` (listed as `mcp__reasoning-controller__request_more_reasoning`, only while automatic escalation is on). Claude may call it when a task turns out harder than expected; it raises the effort for the rest of that task. The mod answers only this, its own tool. It does **not** stand in for any other tool: every other tool call passes through unchanged, and its result is returned as the tool produced it.
+
+### Hooks
+
+| Hook | What it does |
+|---|---|
+| `session.start` | Registers the `/reasoning` command and, if escalation is on, the `request_more_reasoning` tool. |
+| `turn.start` (main conversation only) | Analyses the new task locally and takes a pending `/reasoning <level>` override. Optionally asks the small model when the task is unclear (AI classification, off by default). |
+| `turn.step` (main conversation only) | Decides the level on the turn's first request, then sends **every request of the turn** with that `effort` (`next({ ...e, effort })`). Subagent requests, models without effort and an active effort-cycle pick pass through unchanged. |
+| `turn.complete` | Forgets the finished turn's in-memory data. |
+| `tool.call` (all tools) | Observes results only: three failed calls in one task raise the effort (escalation). It always returns what the tool returned. |
+| `tool.call` (`request_more_reasoning`) | Answers this mod's own escalation tool. |
+| `state.set` (effort-cycle `base`) | Only with effort-cycle installed: while this mod is changing a request's effort, it keeps effort-cycle's record of the engine's own level correct, so a Ctrl+↑/↓ pick is not dropped. It changes nothing else. |
+| `command.run` (`/reasoning`) | Status, one-time overrides and the setting changes listed above. |
+| `ui.render` (`AbovePrompt`) | Draws the line above the prompt: `Reasoning · AUTO \| Currently · HIGH \| Max Limit · MAX`. |
+| `ui.render` / `ui.press` (pane `reasoning-settings`) | Draws the settings pane and writes the pressed choice to the mod's own `/config` row. |
+
+The mod also reads (never writes) effort-cycle's `override` state, to let your Ctrl+↑/↓ pick win.
 
 ## Development
 

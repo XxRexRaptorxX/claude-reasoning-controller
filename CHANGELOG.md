@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 – 2026-11-13
+
+- Plugin directory review fixes: settings are written with fixed keys from the hooks themselves, the settings pane is answered by a `ui.press` hook, the escalation tool has its own `tool.call` hook, and no environment variable is read anymore.
+- README: what the mod submits, which settings it writes, its tool and every hook.
+
 ## 0.2.0 – 2026-11-13
 
 - First public release.

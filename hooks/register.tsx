@@ -20,6 +20,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { ReasoningDecisionView } from '../types'
 import { analyze, type Analysis } from './lib/classifier'
 import {
+  bandParts,
   countDecision,
   decisionNotice,
   escalationNotice,
@@ -32,12 +33,69 @@ import {
 } from './lib/format'
 import { isLevel, label, type Level } from './lib/levels'
 import { decide, escalate, type Decision, type Previous } from './lib/policy'
-import { parseSettings, type Settings } from './lib/settings'
+import {
+  MANUAL_CHOICES,
+  MAX_CHOICES,
+  MIN_CHOICES,
+  MODE_LABEL,
+  MODES,
+  PRIORITIES,
+  PRIORITY_LABEL,
+  parseSettings,
+  type Field,
+  type Settings,
+} from './lib/settings'
 import { ESCALATION_TOOL, PANE_ID, STATS_KEY } from './state'
 
 const current = atom({ plugin: 'reasoning-controller', key: 'current' } as const, null, { shape: 'decision-1' })
 const pending = atom({ plugin: 'reasoning-controller', key: 'pending' } as const, null)
-import { registerUi, setOption } from './ui'
+
+// The settings pane: one row of buttons per choice field, one toggle per
+// switch. A press reaches the `ui.press` hook below by the button's key
+// (`<field>:<value>`, `<field>:toggle`, `close`); the buttons hold no handler.
+type PaneRow = { field: Field; title: string; options: readonly string[]; labelOf: (o: string) => string }
+
+const PANE_ROWS: readonly PaneRow[] = [
+  { field: 'mode', title: 'Arbeitsmodus', options: MODES, labelOf: o => MODE_LABEL[o as keyof typeof MODE_LABEL] ?? o },
+  { field: 'maxLevel', title: 'Maximale Stufe', options: MAX_CHOICES, labelOf: o => o.toUpperCase() },
+  { field: 'minLevel', title: 'Minimale Stufe', options: MIN_CHOICES, labelOf: o => o.toUpperCase() },
+  {
+    field: 'priority',
+    title: 'Kosten/Zeit',
+    options: PRIORITIES,
+    labelOf: o => PRIORITY_LABEL[o as keyof typeof PRIORITY_LABEL] ?? o,
+  },
+  {
+    field: 'manualLevel',
+    title: 'Stufe bei MANUAL',
+    options: MANUAL_CHOICES,
+    labelOf: o => (o === 'session' ? '/effort' : o.toUpperCase()),
+  },
+]
+
+const PANE_TOGGLES: readonly { field: 'autoEscalation' | 'showDecision' | 'aiClassifier'; title: string }[] = [
+  { field: 'autoEscalation', title: 'Automatische Eskalation' },
+  { field: 'showDecision', title: 'Entscheidung anzeigen' },
+  { field: 'aiClassifier', title: 'KI-Klassifizierung (kleines Modell)' },
+]
+
+function valueOf(s: Settings, field: Field): string | boolean {
+  if (field === 'manualLevel') return s.manualLevel ?? 'session'
+  return s[field]
+}
+
+/** The pane's buttons are answered by the ui.press hook, which takes every press; this is never reached. */
+const handledByPressHook = (): void => undefined
+
+/** A pane button's key as the field and value it sets; undefined for none. */
+function pressedSetting(element: string, s: Settings): { field: Field; value: string | boolean } | undefined {
+  const [field, value] = element.split(':')
+  if (field === 'autoEscalation' || field === 'showDecision' || field === 'aiClassifier') {
+    return value === 'toggle' ? { field, value: !s[field] } : undefined
+  }
+  const row = PANE_ROWS.find(r => r.field === field)
+  return row && value !== undefined && row.options.includes(value) ? { field: row.field, value } : undefined
+}
 
 // The effort-cycle plugin (Anerco) lets the person pick a level with Ctrl+↑/↓
 // and applies it in its own turn.step hook. Its pick wins over this mod: while
@@ -65,7 +123,6 @@ type Runtime = {
   turns: Map<string, TurnInfo>
   mainTurnId?: string
   previous?: Previous
-  perMessageEffort: boolean
   /** The step this mod is rewriting right now: the level it sent, the engine's. */
   injection?: { model: string; injected: Level; engine: string }
 }
@@ -83,7 +140,7 @@ const AI_TO_LEVEL: Record<(typeof AI_LABELS)[number], Level> = {
 
 export const register: Register = (on, options) => {
   const settings = parseSettings(options)
-  const rt: Runtime = { settings, turns: new Map(), perMessageEffort: false }
+  const rt: Runtime = { settings, turns: new Map() }
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -105,8 +162,6 @@ export const register: Register = (on, options) => {
         isDeferred: false,
       })
     }
-    const caps = await $.env.get('CLAUDE_CODE_MODEL_CAPABILITIES')
-    rt.perMessageEffort = (caps ?? '').includes('per_turn_effort')
     return next(e)
   })
 
@@ -206,14 +261,16 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  // ---- escalation: repeated tool failures, or Claude asks for it ----
+  // ---- escalation: Claude asks for it through this mod's own tool ----
+  on('tool.call', { tool: 'mcp__reasoning-controller__request_more_reasoning' }, async ($, e) => {
+    const raw = (e as { reason?: unknown }).reason
+    const reason = typeof raw === 'string' ? raw.slice(0, 120) : ''
+    const text = await escalateCurrent($, rt, `von Claude angefordert${reason ? ': ' + reason : ''}`, true)
+    return { result: text }
+  }).catch(() => ({ result: 'Escalation unavailable; continue at the current effort.' }))
+
+  // ---- escalation: repeated tool failures (observes; never changes a result) ----
   on('tool.call', async ($, e, next) => {
-    if (String(e.tool).endsWith(`__${ESCALATION_TOOL}`)) {
-      const raw = (e as { reason?: unknown }).reason
-      const reason = typeof raw === 'string' ? raw.slice(0, 120) : ''
-      const text = await escalateCurrent($, rt, `von Claude angefordert${reason ? ': ' + reason : ''}`, true)
-      return { result: text }
-    }
     const result = await next(e)
     if (settings.autoEscalation && e.agentId === undefined && result.deny === undefined && result.isError === true) {
       const info = rt.mainTurnId ? rt.turns.get(rt.mainTurnId) : undefined
@@ -225,13 +282,7 @@ export const register: Register = (on, options) => {
       }
     }
     return result
-  }).catch(($, e, next) =>
-    // Never let a failure here change a tool's outcome: replay what the tool
-    // answered, or answer the escalation tool without escalating.
-    next.called || !String(e.tool).endsWith(`__${ESCALATION_TOOL}`)
-      ? next(e)
-      : { result: 'Escalation unavailable; continue at the current effort.' },
-  )
+  }).catch(($, e, next) => next(e))
 
   // ---- /reasoning ----
   on('command.run', { command: 'reasoning' }, async ($, e) => {
@@ -254,13 +305,39 @@ export const register: Register = (on, options) => {
         }
         return { text: `Reasoning ${label(action.level)} für den nächsten Auftrag (einmalig).` }
       }
-      case 'set': {
-        const deny = await setOption($, action.field, action.value)
-        return { text: deny ? `Nicht geändert: ${deny}` : `${action.field} = ${action.value} (gespeichert).` }
-      }
+      case 'set':
       case 'toggle': {
-        const deny = await setOption($, action.field, action.value)
-        return { text: deny ? `Nicht geändert: ${deny}` : `${action.field} = ${action.value ? 'an' : 'aus'} (gespeichert).` }
+        // Writes only this mod's own /config rows (its userConfig fields).
+        const value = action.value
+        let r: { deny?: string | undefined }
+        switch (action.field) {
+          case 'mode':
+            r = await $.config.set({ key: 'reasoning-controller.mode', value })
+            break
+          case 'maxLevel':
+            r = await $.config.set({ key: 'reasoning-controller.maxLevel', value })
+            break
+          case 'minLevel':
+            r = await $.config.set({ key: 'reasoning-controller.minLevel', value })
+            break
+          case 'priority':
+            r = await $.config.set({ key: 'reasoning-controller.priority', value })
+            break
+          case 'manualLevel':
+            r = await $.config.set({ key: 'reasoning-controller.manualLevel', value })
+            break
+          case 'autoEscalation':
+            r = await $.config.set({ key: 'reasoning-controller.autoEscalation', value })
+            break
+          case 'showDecision':
+            r = await $.config.set({ key: 'reasoning-controller.showDecision', value })
+            break
+          case 'aiClassifier':
+            r = await $.config.set({ key: 'reasoning-controller.aiClassifier', value })
+            break
+        }
+        const shown = typeof value === 'boolean' ? (value ? 'an' : 'aus') : value
+        return { text: r.deny ? `Nicht geändert: ${r.deny}` : `${action.field} = ${shown} (gespeichert).` }
       }
       case 'settings': {
         const r = await $.ui.open({ id: PANE_ID, title: 'Reasoning-Einstellungen', focus: true, closeOnEscape: true })
@@ -274,7 +351,99 @@ export const register: Register = (on, options) => {
     }
   })
 
-  registerUi(on, settings)
+  // ---- the line above the prompt: mode, current level, limits ----
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.props.hasSurvey) return next(e)
+    const v = await read($, current)
+    const p = await read($, pending)
+    const { Box, Text } = $.ui.resolve(e)
+    const parts = bandParts(v, settings, p)
+    const nextLevel = p !== null ? ` | Next · ${p.toUpperCase()}` : ''
+    return (
+      <Box>
+        <Text dimColor>Reasoning · {parts.mode} | Currently · </Text>
+        <Text bold>{parts.level}</Text>
+        <Text dimColor>
+          {nextLevel} | {parts.limit}
+        </Text>
+      </Box>
+    )
+  })
+
+  // ---- the settings pane (/reasoning settings) ----
+  on('ui.render', { component: 'Pane', requestId: 'reasoning-settings' }, async ($, e) => {
+    const { Box, Text, Button } = $.ui.resolve(e)
+    const v = await read($, current)
+    return (
+      <Box flexDirection="column">
+        <Text dimColor>Gilt für neue Aufträge. Gespeichert in den Einstellungen (auch unter /config).</Text>
+        {PANE_ROWS.map(row => (
+          <Box flexDirection="column">
+            <Text bold>{row.title}</Text>
+            <Box flexDirection="row" flexWrap="wrap">
+              {row.options.map(o => (
+                <Button
+                  key={`${row.field}:${o}`}
+                  label={row.labelOf(o)}
+                  variant={valueOf(settings, row.field) === o ? 'primary' : 'secondary'}
+                  onPress={handledByPressHook}
+                />
+              ))}
+            </Box>
+          </Box>
+        ))}
+        {PANE_TOGGLES.map(t => (
+          <Box flexDirection="row">
+            <Button key={`${t.field}:toggle`} label={`${settings[t.field] ? '[x]' : '[ ]'} ${t.title}`} plain onPress={handledByPressHook} />
+          </Box>
+        ))}
+        <Text dimColor>
+          {v === null || v.source === 'unsupported'
+            ? 'Noch keine Entscheidung in dieser Sitzung.'
+            : `Zuletzt: ${v.categoryLabel} → ${v.level ? label(v.level) : 'unverändert'}`}
+        </Text>
+        <Button key="close" label="Schließen" role="dismiss" onPress={handledByPressHook} />
+      </Box>
+    )
+  })
+
+  // ---- a press in the settings pane: write this mod's own /config row ----
+  on('ui.press', { plugin: 'reasoning-controller', requestId: 'reasoning-settings' }, async ($, e) => {
+    if (e.element === 'close') {
+      await $.ui.close({ id: 'reasoning-settings' })
+      return { element: e.element }
+    }
+    const pressed = pressedSetting(e.element, settings)
+    if (pressed === undefined) return { element: e.element }
+    const value = pressed.value
+    switch (pressed.field) {
+      case 'mode':
+        await $.config.set({ key: 'reasoning-controller.mode', value })
+        break
+      case 'maxLevel':
+        await $.config.set({ key: 'reasoning-controller.maxLevel', value })
+        break
+      case 'minLevel':
+        await $.config.set({ key: 'reasoning-controller.minLevel', value })
+        break
+      case 'priority':
+        await $.config.set({ key: 'reasoning-controller.priority', value })
+        break
+      case 'manualLevel':
+        await $.config.set({ key: 'reasoning-controller.manualLevel', value })
+        break
+      case 'autoEscalation':
+        await $.config.set({ key: 'reasoning-controller.autoEscalation', value })
+        break
+      case 'showDecision':
+        await $.config.set({ key: 'reasoning-controller.showDecision', value })
+        break
+      case 'aiClassifier':
+        await $.config.set({ key: 'reasoning-controller.aiClassifier', value })
+        break
+    }
+    return { element: e.element }
+  })
 }
 
 async function escalateCurrent($: EngineInterface, rt: Runtime, reason: string, byModel: boolean): Promise<string> {
@@ -302,9 +471,7 @@ async function escalateCurrent($: EngineInterface, rt: Runtime, reason: string, 
   )
   await bumpStats($, s => ({ ...s, escalations: s.escalations + 1 }))
   if (settings.showDecision) $.ui.log(escalationNotice(from, to, reason))
-  return rt.perMessageEffort
-    ? `Effort raised to ${to}; it takes effect from the next user message (this model takes effort per message).`
-    : `Effort raised to ${to} for the remaining requests of this task.`
+  return `Effort raised to ${to} for the remaining requests of this task (where effort is set per message, from the next user message).`
 }
 
 /** The level picked with effort-cycle's keys for this model, if any. */

@@ -1,6 +1,6 @@
 {
   "name": "reasoning-controller",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Adaptive Reasoning Controller: picks the right effort level (low to max) for every task and actually sends it with each model request via turn.step. UI in German.",
   "author": { "name": "XxRexRaptorxX", "url": "https://github.com/XxRexRaptorxX" },
   "homepage": "https://github.com/XxRexRaptorxX/claude-reasoning-controller#readme",

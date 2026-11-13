@@ -15,7 +15,6 @@ function engine(
 ) {
   on('command.register', (_, e) => ({ value: { command: e.name } }))
   on('tool.register', (_, e) => ({ value: { tool: `mcp__reasoning-controller__${e.name}` } }))
-  on('env.get', () => ({ value: undefined }))
   on('ui.log', (_, e) => {
     logs.push(e.text)
     return { value: undefined }
