@@ -146,7 +146,7 @@ export const register: Register = (on, options) => {
     await $.command.register({
       name: 'reasoning',
       description: 'Reasoning-Controller: Status, Stufe für den nächsten Auftrag, Modus und Einstellungen',
-      argumentHint: '[low|medium|high|xhigh|max [Auftrag] | auto | mode … | max-level … | settings]',
+      argumentHint: '[low|medium|high|xhigh|max | auto | mode … | max-level … | settings]',
       immediate: true,
     })
     if (settings.autoEscalation) {
@@ -298,14 +298,12 @@ export const register: Register = (on, options) => {
         await update($, pending, () => null)
         return { text: 'Keine Überschreibung: der nächste Auftrag wird automatisch eingestuft.' }
       case 'override': {
+        // The mod submits no prompts: text after the level is not sent.
         await update($, pending, () => action.level)
-        if (action.prompt !== '') {
-          await $.prompt.submit({ text: action.prompt, asUser: true })
-          return { text: `Reasoning ${label(action.level)} für diesen Auftrag.` }
-        }
-        return { text: `Reasoning ${label(action.level)} für den nächsten Auftrag (einmalig).` }
+        const hint = action.prompt !== '' ? ' Den Auftrag bitte jetzt als eigene Nachricht senden.' : ''
+        return { text: `Reasoning ${label(action.level)} für den nächsten Auftrag (einmalig).${hint}` }
       }
-      case 'set':
+      case 'choice':
       case 'toggle': {
         // Writes only this mod's own /config rows (its userConfig fields).
         const value = action.value

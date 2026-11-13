@@ -11,3 +11,6 @@ node_modules/
 
 # Local release notes, not part of the repository
 ANLEITUNG-RELEASE.md
+
+# Logo source (SVG is not an accepted file type in the plugin directory)
+.local-assets/

@@ -108,7 +108,6 @@ Die Begründung nennt nur Eigenschaften der Aufgabe, keine internen Gedankengän
 |---|---|
 | `/reasoning` | Status, letzte Entscheidung, Statistik |
 | `/reasoning high` | HIGH **für den nächsten Auftrag** (einmalig). Hat Vorrang vor der Automatik und vor Min/Max |
-| `/reasoning max Beweise, dass …` | Stufe setzen und Auftrag direkt absenden |
 | `/reasoning auto` | Ausstehende Überschreibung verwerfen |
 | `/reasoning mode auto\|balanced\|quality\|speed\|manual` | Arbeitsmodus (wird gespeichert) |
 | `/reasoning max-level medium\|high\|xhigh\|max` | Obergrenze |
@@ -156,7 +155,7 @@ Ist das Plugin [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle
 
 ### Was die Mod verändert
 
-* **Abgesendete Prompts:** nur bei `/reasoning <stufe> <auftrag>`. Dann wird der Text nach der Stufe **unverändert als dein eigener Prompt** abgesendet, ohne Zusätze.
+* **Prompts:** Die Mod sendet **keine eigenen Prompts** ab. `/reasoning <stufe>` merkt die Stufe nur für den nächsten Auftrag vor, den du selbst sendest.
 * **Einstellungen:** nur die eigenen acht `/config`-Zeilen (`reasoning-controller.<feld>`), und nur, wenn du sie über `/reasoning …` oder das Einstellungsfenster änderst. Umgebungsvariablen werden weder gesetzt noch gelesen.
 * **Tools:** nur das eigene `request_more_reasoning`. Alle anderen Tool-Aufrufe laufen unverändert durch.
 * **Hooks:** Die vollständige Liste mit dem Zweck jedes Hooks steht im englischen [README](../README.md#hooks).

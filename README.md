@@ -47,7 +47,6 @@ Claude Code raises the `turn.step` event before every model request, with the `e
 |---|---|
 | `/reasoning` | Status, last decision, statistics |
 | `/reasoning high` | `high` for the **next task only**; takes precedence over AUTO and min/max |
-| `/reasoning max <task>` | Set the level and submit the task at once |
 | `/reasoning auto` | Discard a pending override |
 | `/reasoning mode auto\|balanced\|quality\|speed\|manual` | Working mode |
 | `/reasoning max-level medium\|high\|xhigh\|max` | Upper limit |
@@ -90,19 +89,16 @@ When [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle) is insta
 
 ### Notes for the plugin directory review
 
-- **Stored data and submitted prompts are never combined.** `$.store` holds only anonymous counters (`stats`: number of decisions per level and source, escalations, overrides). `/reasoning status` reads them to *display* them. The only `$.prompt.submit` call sends the text you typed after `/reasoning <level>`, unchanged. Nothing read from the store, the session or anywhere else is ever put into a prompt.
-- **Scanner matches that are not environment reads or mail sending:**
-  - `hooks/lib/classifier.ts` contains the words `mail`/`email` only inside a regular expression that recognises tasks like "write an e-mail" (to classify them as simple writing tasks).
-  - `hooks/lib/format.ts` uses `set` only as a name in the `/reasoning` argument parser (`kind: 'set'`, `const set = SET_FIELDS[word]`).
-  - The mod runs no shell commands, reads no environment variables, files or credentials, and has no code path that sends anything off the machine.
+- **The mod submits no prompts.** `$.store` holds only anonymous counters (`stats`: number of decisions per level and source, escalations, overrides), which `/reasoning status` reads to display them.
+- **No credentials:** `hooks/lib/classifier.ts` contains the words `mail`/`email` only inside a regular expression that recognises tasks like "write an e-mail" (to classify them as simple writing tasks). The mod runs no shell commands, reads no environment variables, files or credentials, and has no code path that sends anything off the machine.
 - **`tool.call` results of its own:** only for this mod's own tool `mcp__reasoning-controller__request_more_reasoning` (see *Tools*). It does not stand in for any other tool.
 - **`config.set`:** only the mod's own eight `reasoning-controller.*` rows, with fixed keys (see *Configuration and environment*). It never touches permission modes or any other setting.
 
 ## What the mod changes
 
-### Prompts it submits
+### Prompts
 
-The mod submits a prompt in exactly one case: `/reasoning <level> <task>`. It then submits the text after the level (`<task>`) **unchanged, as your own prompt**, with nothing added, removed or rewritten. Before that, it notes `<level>` as the level for that task. The mod never modifies, extends or replaces any prompt you type, and it adds no reasoning instructions to the system prompt.
+The mod **submits no prompts** of its own. It never modifies, extends or replaces any prompt you type, and it adds no reasoning instructions to the system prompt. `/reasoning <level>` only notes the level for your next task; you then send the task yourself.
 
 ### Configuration and environment
 

@@ -101,7 +101,7 @@ export function statusText(v: ReasoningDecisionView | null, s: Settings, pending
 
 export const HELP = [
   '/reasoning                    Status anzeigen',
-  '/reasoning <stufe> [Auftrag]  Stufe für den nächsten Auftrag (low|medium|high|xhigh|max)',
+  '/reasoning <stufe>            Stufe für den nächsten Auftrag (low|medium|high|xhigh|max)',
   '/reasoning auto               Überschreibung verwerfen, automatisch wählen',
   '/reasoning mode <modus>       auto|balanced|quality|speed|manual',
   '/reasoning max-level <stufe>  medium|high|xhigh|max (Obergrenze)',
@@ -159,13 +159,13 @@ export type CommandAction =
   | { kind: 'help' }
   | { kind: 'clear' }
   | { kind: 'override'; level: Level; prompt: string }
-  | { kind: 'set'; field: 'mode' | 'maxLevel' | 'minLevel' | 'priority' | 'manualLevel'; value: string }
+  | { kind: 'choice'; field: 'mode' | 'maxLevel' | 'minLevel' | 'priority' | 'manualLevel'; value: string }
   | { kind: 'toggle'; field: 'autoEscalation' | 'showDecision' | 'aiClassifier'; value: boolean }
   | { kind: 'settings' }
   | { kind: 'reset-stats' }
   | { kind: 'error'; message: string }
 
-const SET_FIELDS: Record<string, { field: 'mode' | 'maxLevel' | 'minLevel' | 'priority' | 'manualLevel'; allowed: readonly string[] }> = {
+const CHOICE_FIELDS: Record<string, { field: 'mode' | 'maxLevel' | 'minLevel' | 'priority' | 'manualLevel'; allowed: readonly string[] }> = {
   mode: { field: 'mode', allowed: MODES },
   'max-level': { field: 'maxLevel', allowed: ['medium', 'high', 'xhigh', 'max'] },
   limit: { field: 'maxLevel', allowed: ['medium', 'high', 'xhigh', 'max'] },
@@ -193,13 +193,13 @@ export function parseCommand(args: string): CommandAction {
   if (word === 'settings' || word === 'einstellungen') return { kind: 'settings' }
   if (word === 'reset-stats') return { kind: 'reset-stats' }
   if (isLevel(word)) return { kind: 'override', level: word, prompt: tail }
-  const set = SET_FIELDS[word]
-  if (set) {
+  const entry = CHOICE_FIELDS[word]
+  if (entry) {
     const value = (rest[0] ?? '').toLowerCase()
-    if (!set.allowed.includes(value)) {
-      return { kind: 'error', message: `Erlaubt für ${word}: ${set.allowed.join(', ')}` }
+    if (!entry.allowed.includes(value)) {
+      return { kind: 'error', message: `Erlaubt für ${word}: ${entry.allowed.join(', ')}` }
     }
-    return { kind: 'set', field: set.field, value }
+    return { kind: 'choice', field: entry.field, value }
   }
   const toggle = TOGGLES[word]
   if (toggle) {

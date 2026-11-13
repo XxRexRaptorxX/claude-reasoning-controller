@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3 – 2026-11-13
+
+- The mod submits no prompts anymore: `/reasoning <level> <task>` only notes the level; you send the task yourself.
+- Parser names renamed (`set` → `choice`/`entry`) so they no longer read like a shell command.
+- The SVG logo source is no longer shipped (not an accepted file type); the PNG icon stays.
+
 ## 0.2.2 – 2026-11-13
 
 - `config.set` calls name both members explicitly (`{ key: 'reasoning-controller.<field>', value: value }`).
