@@ -26,8 +26,8 @@ Was es **nicht** gibt bzw. was die Mod bewusst **nicht** nutzt:
 
 ### Grenzen (bewusst dokumentiert, nicht vorgetäuscht)
 
-1. **Modelle mit Effort pro Nachricht** (`CLAUDE_CODE_MODEL_CAPABILITIES=per_turn_effort`): Laut API-Doku wird eine geänderte Stufe auf einem Schritt, der nur Tool-Ergebnisse enthält, nicht gesendet. Eine **Eskalation mitten im Auftrag wirkt dann erst ab der nächsten Benutzernachricht**. Die Mod liest diese Variable nicht; ihre Antwort an Claude nennt beide Fälle.
-2. **Prompt-Cache:** Bei Modellen mit Effort pro Anfrage (Standard) macht ein Stufenwechsel zwischen Aufträgen den Nachrichten-Cache ungültig. Deshalb gibt es eine Hysterese (knappe Entscheidungen behalten die alte Stufe), und in langen Verläufen (ab 40 Nachrichten) wird nicht um nur eine Stufe abgesenkt. Wer oft wechselt, kann auf der First-Party-API `CLAUDE_CODE_MODEL_CAPABILITIES=per_turn_effort` setzen (im `env` der User-Settings); dann ist der Wechsel cache-neutral.
+1. **Effort pro Nachricht** (wenn du Claude Code selbst so eingerichtet hast): Laut API-Doku wird eine geänderte Stufe auf einem Schritt, der nur Tool-Ergebnisse enthält, nicht gesendet. Eine **Eskalation mitten im Auftrag wirkt dann erst ab der nächsten Benutzernachricht**. Die Mod prüft oder ändert diese Einstellung nicht; ihre Antwort an Claude nennt beide Fälle.
+2. **Prompt-Cache:** Bei Modellen mit Effort pro Anfrage (Standard) macht ein Stufenwechsel zwischen Aufträgen den Nachrichten-Cache ungültig. Deshalb gibt es eine Hysterese (knappe Entscheidungen behalten die alte Stufe), und in langen Verläufen (ab 40 Nachrichten) wird nicht um nur eine Stufe abgesenkt. Wer oft wechselt, kann Claude Code auf der First-Party-API auf Effort pro Nachricht umstellen (siehe Claude-Code-Dokumentation); dann ist der Wechsel cache-neutral.
 3. **Subagenten** behalten ihren eigenen Effort, der in ihrer Agent-Definition festgelegt ist. Die Mod steuert nur die Hauptkonversation.
 4. **Übergeordnete Grenzen bleiben wirksam:** Organisationsrichtlinien, die Einstellung `maxEffortLevel` und die Stufen des Modells. Claude Code senkt eine nicht unterstützte Stufe still ab. Die Mod wählt vorher selbst die nächstliegende unterstützte Stufe und zeigt das an.
 5. **Numerische Effort-Werte** (interne Builds) werden nicht verändert.
@@ -183,7 +183,7 @@ claude plugin install reasoning-controller --marketplace XxRexRaptorxX/claude-re
 
 In der Desktop-App (dort läuft `/plugin` nicht): auf **+** neben dem Eingabefeld klicken, **Plugins** wählen, dann **Add marketplace** mit `XxRexRaptorxX/claude-reasoning-controller`, dann **Add plugin**.
 
-Zum Entwickeln aus einem lokalen Ordner: `claude --plugin-dir <ordner>` oder den Ordner in `CLAUDE_CODE_PLUGIN_DIRS` eintragen (im `env` von `~/.claude/settings.json`).
+Zum Entwickeln aus einem lokalen Ordner: `claude --plugin-dir <ordner>`.
 
 ## 5. Prüfen und Testen
 

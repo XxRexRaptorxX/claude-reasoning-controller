@@ -75,7 +75,7 @@ When [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle) is insta
 
 ## Limits
 
-- On models that take effort **per message** (when you set `CLAUDE_CODE_MODEL_CAPABILITIES=per_turn_effort` yourself; the mod does not read or set it), a mid-task escalation applies from the next user message.
+- If you have set up Claude Code to send effort **per message** (a model capability you configure yourself; this mod does not check or change it), a mid-task escalation applies from the next user message.
 - On models that take effort per request (the default), changing the level between tasks invalidates the messages prompt cache. That is why the mod avoids needless switches.
 - Subagents keep their own effort, as their definitions set it.
 - Organization policy, the `maxEffortLevel` setting and model capabilities still apply on top.
@@ -94,7 +94,7 @@ When [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle) is insta
 - **Scanner matches that are not environment reads or mail sending:**
   - `hooks/lib/classifier.ts` contains the words `mail`/`email` only inside a regular expression that recognises tasks like "write an e-mail" (to classify them as simple writing tasks).
   - `hooks/lib/format.ts` uses `set` only as a name in the `/reasoning` argument parser (`kind: 'set'`, `const set = SET_FIELDS[word]`).
-  - The mod contains no shell commands, never reads the environment (`printenv`, `env`, `export -p`, `set` or `$.env`), and has no code path that sends anything off the machine.
+  - The mod runs no shell commands, reads no environment variables, files or credentials, and has no code path that sends anything off the machine.
 - **`tool.call` results of its own:** only for this mod's own tool `mcp__reasoning-controller__request_more_reasoning` (see *Tools*). It does not stand in for any other tool.
 - **`config.set`:** only the mod's own eight `reasoning-controller.*` rows, with fixed keys (see *Configuration and environment*). It never touches permission modes or any other setting.
 
