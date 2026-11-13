@@ -1,3 +1,5 @@
+<p align="center"><img src=".claude-plugin/icon.png" alt="Adaptive Reasoning Controller logo" width="160"></p>
+
 # Adaptive Reasoning Controller for Claude Code
 
 A Claude Code mod that picks the right **effort level** (`low`, `medium`, `high`, `xhigh`, `max`) for every task and **actually sends it with each model request**. It does not add "think harder" hints to the prompt.

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1E2550"/>
+      <stop offset="1" stop-color="#120F2B"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.55" r="0.5">
+      <stop offset="0" stop-color="#7B6CF6" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7B6CF6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="224" fill="url(#glow)"/>
+  <path d="M 212.0 590.0 A 300 300 0 0 1 259.0 428.8" stroke="#4F8DF7" stroke-width="88" fill="none"/>
+  <path d="M 280.5 399.2 A 300 300 0 0 1 402.0 310.9" stroke="#2EC4A0" stroke-width="88" fill="none"/>
+  <path d="M 436.9 299.6 A 300 300 0 0 1 587.1 299.6" stroke="#F5C542" stroke-width="88" fill="none"/>
+  <path d="M 622.0 310.9 A 300 300 0 0 1 743.5 399.2" stroke="#F2894A" stroke-width="88" fill="none"/>
+  <path d="M 765.0 428.8 A 300 300 0 0 1 812.0 590.0" stroke="#EB4D5C" stroke-width="88" fill="none"/>
+  <line x1="282.0" y1="590.0" x2="318.0" y2="590.0" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
+  <line x1="293.3" y1="518.9" x2="310.4" y2="524.5" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="7" stroke-linecap="round"/>
+  <line x1="325.9" y1="454.8" x2="355.1" y2="476.0" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
+  <line x1="376.8" y1="403.9" x2="387.4" y2="418.5" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="7" stroke-linecap="round"/>
+  <line x1="440.9" y1="371.3" x2="452.1" y2="405.5" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
+  <line x1="512.0" y1="360.0" x2="512.0" y2="378.0" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="7" stroke-linecap="round"/>
+  <line x1="583.1" y1="371.3" x2="571.9" y2="405.5" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
+  <line x1="647.2" y1="403.9" x2="636.6" y2="418.5" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="7" stroke-linecap="round"/>
+  <line x1="698.1" y1="454.8" x2="668.9" y2="476.0" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
+  <line x1="730.7" y1="518.9" x2="713.6" y2="524.5" stroke="#FFFFFF" stroke-opacity="0.3" stroke-width="7" stroke-linecap="round"/>
+  <line x1="742.0" y1="590.0" x2="706.0" y2="590.0" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
+  <polygon points="544.3,360.3 486.3,586.4 537.7,593.6" fill="#FFFFFF"/>
+  <circle cx="512" cy="590" r="48" fill="#FFFFFF"/>
+  <circle cx="512" cy="590" r="20" fill="#1E2550"/>
+  <rect x="332" y="716" width="360" height="132" rx="66" fill="#FFFFFF" fill-opacity="0.1" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="5"/>
+  <text x="512" y="808" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-weight="700" font-size="92" letter-spacing="10" fill="#FFFFFF">AUTO</text>
+</svg>
