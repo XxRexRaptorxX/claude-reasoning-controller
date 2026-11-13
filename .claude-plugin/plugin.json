@@ -1,0 +1,66 @@
+{
+  "name": "reasoning-controller",
+  "version": "0.2.0",
+  "description": "Adaptive Reasoning Controller: picks the right effort level (low to max) for every task and actually sends it with each model request via turn.step. UI in German.",
+  "author": { "name": "XxRexRaptorxX", "url": "https://github.com/XxRexRaptorxX" },
+  "homepage": "https://github.com/XxRexRaptorxX/claude-reasoning-controller#readme",
+  "repository": "https://github.com/XxRexRaptorxX/claude-reasoning-controller",
+  "license": "MIT",
+  "keywords": ["effort", "reasoning", "thinking", "auto", "mod", "turn.step"],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "mode": {
+      "type": "string",
+      "title": "Reasoning: Arbeitsmodus",
+      "description": "auto = Stufe pro Auftrag; balanced = ausgewogen (ohne MAX); quality = Qualität zuerst; speed = Geschwindigkeit zuerst; manual = feste Stufe (siehe manualLevel).",
+      "options": ["auto", "balanced", "quality", "speed", "manual"],
+      "default": "auto"
+    },
+    "maxLevel": {
+      "type": "string",
+      "title": "Reasoning: Maximale Stufe",
+      "description": "Höchste Stufe, die der Controller automatisch wählen darf.",
+      "options": ["medium", "high", "xhigh", "max"],
+      "default": "max"
+    },
+    "minLevel": {
+      "type": "string",
+      "title": "Reasoning: Minimale Stufe",
+      "description": "Niedrigste Stufe, die der Controller automatisch wählen darf.",
+      "options": ["low", "medium", "high"],
+      "default": "low"
+    },
+    "priority": {
+      "type": "string",
+      "title": "Reasoning: Kosten-/Zeitpriorität",
+      "description": "efficiency = maximale Effizienz; balanced = ausgewogen; quality = maximale Qualität. Wirkt im Modus auto.",
+      "options": ["efficiency", "balanced", "quality"],
+      "default": "balanced"
+    },
+    "manualLevel": {
+      "type": "string",
+      "title": "Reasoning: Stufe im Modus manual",
+      "description": "session = die mit /effort gesetzte Sitzungsstufe unverändert lassen.",
+      "options": ["session", "low", "medium", "high", "xhigh", "max"],
+      "default": "session"
+    },
+    "autoEscalation": {
+      "type": "boolean",
+      "title": "Reasoning: Automatische Eskalation",
+      "description": "Erhöht die Stufe für weitere Modellaufrufe, wenn ein Auftrag schwieriger ist als erwartet (wiederholte Tool-Fehler oder Claude fordert es an).",
+      "default": true
+    },
+    "showDecision": {
+      "type": "boolean",
+      "title": "Reasoning: Entscheidung anzeigen",
+      "description": "Zeigt vor jedem Auftrag Aufgabe, Stufe und kurze Begründung im Verlauf an.",
+      "default": true
+    },
+    "aiClassifier": {
+      "type": "boolean",
+      "title": "Reasoning: KI-Klassifizierung",
+      "description": "Fragt bei unklaren Aufträgen zusätzlich das kleine, schnelle Modell (kostet eine kurze Anfrage und etwas Latenz).",
+      "default": false
+    }
+  }
+}
