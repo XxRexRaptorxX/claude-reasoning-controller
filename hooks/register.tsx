@@ -312,28 +312,28 @@ export const register: Register = (on, options) => {
         let r: { deny?: string | undefined }
         switch (action.field) {
           case 'mode':
-            r = await $.config.set({ key: 'reasoning-controller.mode', value })
+            r = await $.config.set({ key: 'reasoning-controller.mode', value: value })
             break
           case 'maxLevel':
-            r = await $.config.set({ key: 'reasoning-controller.maxLevel', value })
+            r = await $.config.set({ key: 'reasoning-controller.maxLevel', value: value })
             break
           case 'minLevel':
-            r = await $.config.set({ key: 'reasoning-controller.minLevel', value })
+            r = await $.config.set({ key: 'reasoning-controller.minLevel', value: value })
             break
           case 'priority':
-            r = await $.config.set({ key: 'reasoning-controller.priority', value })
+            r = await $.config.set({ key: 'reasoning-controller.priority', value: value })
             break
           case 'manualLevel':
-            r = await $.config.set({ key: 'reasoning-controller.manualLevel', value })
+            r = await $.config.set({ key: 'reasoning-controller.manualLevel', value: value })
             break
           case 'autoEscalation':
-            r = await $.config.set({ key: 'reasoning-controller.autoEscalation', value })
+            r = await $.config.set({ key: 'reasoning-controller.autoEscalation', value: value })
             break
           case 'showDecision':
-            r = await $.config.set({ key: 'reasoning-controller.showDecision', value })
+            r = await $.config.set({ key: 'reasoning-controller.showDecision', value: value })
             break
           case 'aiClassifier':
-            r = await $.config.set({ key: 'reasoning-controller.aiClassifier', value })
+            r = await $.config.set({ key: 'reasoning-controller.aiClassifier', value: value })
             break
         }
         const shown = typeof value === 'boolean' ? (value ? 'an' : 'aus') : value
@@ -418,28 +418,28 @@ export const register: Register = (on, options) => {
     const value = pressed.value
     switch (pressed.field) {
       case 'mode':
-        await $.config.set({ key: 'reasoning-controller.mode', value })
+        await $.config.set({ key: 'reasoning-controller.mode', value: value })
         break
       case 'maxLevel':
-        await $.config.set({ key: 'reasoning-controller.maxLevel', value })
+        await $.config.set({ key: 'reasoning-controller.maxLevel', value: value })
         break
       case 'minLevel':
-        await $.config.set({ key: 'reasoning-controller.minLevel', value })
+        await $.config.set({ key: 'reasoning-controller.minLevel', value: value })
         break
       case 'priority':
-        await $.config.set({ key: 'reasoning-controller.priority', value })
+        await $.config.set({ key: 'reasoning-controller.priority', value: value })
         break
       case 'manualLevel':
-        await $.config.set({ key: 'reasoning-controller.manualLevel', value })
+        await $.config.set({ key: 'reasoning-controller.manualLevel', value: value })
         break
       case 'autoEscalation':
-        await $.config.set({ key: 'reasoning-controller.autoEscalation', value })
+        await $.config.set({ key: 'reasoning-controller.autoEscalation', value: value })
         break
       case 'showDecision':
-        await $.config.set({ key: 'reasoning-controller.showDecision', value })
+        await $.config.set({ key: 'reasoning-controller.showDecision', value: value })
         break
       case 'aiClassifier':
-        await $.config.set({ key: 'reasoning-controller.aiClassifier', value })
+        await $.config.set({ key: 'reasoning-controller.aiClassifier', value: value })
         break
     }
     return { element: e.element }

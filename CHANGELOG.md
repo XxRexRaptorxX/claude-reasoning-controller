@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 – 2026-11-13
+
+- `config.set` calls name both members explicitly (`{ key: 'reasoning-controller.<field>', value: value }`).
+- README: notes for the plugin directory review (stored counters vs. submitted prompts, scanner matches, own tool, own settings only).
+
 ## 0.2.1 – 2026-11-13
 
 - Plugin directory review fixes: settings are written with fixed keys from the hooks themselves, the settings pane is answered by a `ui.press` hook, the escalation tool has its own `tool.call` hook, and no environment variable is read anymore.

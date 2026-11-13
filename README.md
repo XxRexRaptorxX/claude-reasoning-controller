@@ -88,6 +88,16 @@ When [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle) is insta
 - The only thing the model sees from this mod is the short description of the escalation tool, and only while escalation is enabled.
 - The mod reads no credentials and no environment variables, and it makes no network requests of its own.
 
+### Notes for the plugin directory review
+
+- **Stored data and submitted prompts are never combined.** `$.store` holds only anonymous counters (`stats`: number of decisions per level and source, escalations, overrides). `/reasoning status` reads them to *display* them. The only `$.prompt.submit` call sends the text you typed after `/reasoning <level>`, unchanged. Nothing read from the store, the session or anywhere else is ever put into a prompt.
+- **Scanner matches that are not environment reads or mail sending:**
+  - `hooks/lib/classifier.ts` contains the words `mail`/`email` only inside a regular expression that recognises tasks like "write an e-mail" (to classify them as simple writing tasks).
+  - `hooks/lib/format.ts` uses `set` only as a name in the `/reasoning` argument parser (`kind: 'set'`, `const set = SET_FIELDS[word]`).
+  - The mod contains no shell commands, never reads the environment (`printenv`, `env`, `export -p`, `set` or `$.env`), and has no code path that sends anything off the machine.
+- **`tool.call` results of its own:** only for this mod's own tool `mcp__reasoning-controller__request_more_reasoning` (see *Tools*). It does not stand in for any other tool.
+- **`config.set`:** only the mod's own eight `reasoning-controller.*` rows, with fixed keys (see *Configuration and environment*). It never touches permission modes or any other setting.
+
 ## What the mod changes
 
 ### Prompts it submits
