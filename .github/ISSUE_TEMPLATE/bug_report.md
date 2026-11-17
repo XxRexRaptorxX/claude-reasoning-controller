@@ -1,7 +1,10 @@
 ---
 name: Bug report / wrong effort level
 about: The controller chose an unexpected level, or something does not work
+title: ''
 labels: bug
+assignees: ''
+
 ---
 
 **Claude Code version** (`claude --version`):
