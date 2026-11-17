@@ -30,30 +30,30 @@ function modeLabel(mode: string): string {
 /** The notice shown before a task (transparency setting). */
 export function decisionNotice(v: ReasoningDecisionView): string {
   if (v.source === 'unsupported') {
-    return `Reasoning-Controller: ${v.family} nimmt keine Effort-Stufe an, die Anfrage bleibt unverändert.`
+    return `Reasoning-Controller: ${v.family} takes no effort level; the request is left unchanged.`
   }
   const head =
     v.source === 'override'
-      ? `${modeLabel(v.mode)} · manuelle Überschreibung`
+      ? `${modeLabel(v.mode)} · manual override`
       : v.source === 'keys'
-        ? `${modeLabel(v.mode)} · Tastatur-Wahl (effort-cycle)`
+        ? `${modeLabel(v.mode)} · keyboard pick (effort-cycle)`
       : v.source === 'session'
-        ? 'MANUAL · Sitzungsstufe (/effort)'
+        ? 'MANUAL · session level (/effort)'
         : modeLabel(v.mode) + ' MODE'
   const level = v.level ?? v.baseline
   const lines = [
     head,
-    `Erkannte Aufgabe: ${v.categoryLabel}`,
-    `Ausgewählte Reasoning-Stufe: ${level ? label(level) : 'unverändert'}` +
-      (v.baseline && v.level && v.baseline !== v.level ? ` (Sitzungsstandard: ${label(v.baseline)})` : ''),
-    `Begründung: ${v.reasons.join('; ')}.`,
+    `Detected task: ${v.categoryLabel}`,
+    `Selected reasoning level: ${level ? label(level) : 'unchanged'}` +
+      (v.baseline && v.level && v.baseline !== v.level ? ` (session default: ${label(v.baseline)})` : ''),
+    `Reason: ${v.reasons.join('; ')}.`,
   ]
-  if (v.notes.length > 0) lines.push(`Hinweis: ${v.notes.join('; ')}.`)
+  if (v.notes.length > 0) lines.push(`Note: ${v.notes.join('; ')}.`)
   return lines.join('\n')
 }
 
 export function escalationNotice(from: Level | undefined, to: Level, reason: string): string {
-  return `Reasoning-Controller: Eskalation ${from ? label(from) + ' → ' : ''}${label(to)} (${reason}).`
+  return `Reasoning controller: escalation ${from ? label(from) + ' → ' : ''}${label(to)} (${reason}).`
 }
 
 export type BandParts = { mode: string; level: string; detail: string; limit: string }
@@ -65,17 +65,17 @@ export function bandParts(v: ReasoningDecisionView | null, s: Settings, pending:
   let level: string
   let detail: string
   if (v === null) {
-    level = s.mode === 'manual' ? (s.manualLevel ? label(s.manualLevel) : '/effort') : 'bereit'
-    detail = s.mode === 'manual' ? 'feste Stufe' : 'wählt beim nächsten Auftrag'
+    level = s.mode === 'manual' ? (s.manualLevel ? label(s.manualLevel) : '/effort') : 'ready'
+    detail = s.mode === 'manual' ? 'fixed level' : 'decides on the next task'
   } else if (v.source === 'unsupported') {
     level = '—'
-    detail = `${v.family}: kein Effort`
+    detail = `${v.family}: no effort`
   } else {
     const shown = v.level ?? v.baseline
     level = (shown ? label(shown) : '/effort') + (v.escalated ? ' ↑' : '')
     detail = `${v.categoryLabel}: ${v.escalationReason ?? v.reasons[0] ?? ''}`
   }
-  if (pending !== null) detail = `nächster Auftrag: ${label(pending)} (manuell) · ` + detail
+  if (pending !== null) detail = `next task: ${label(pending)} (manual) · ` + detail
   return { mode, level, detail, limit }
 }
 
@@ -86,31 +86,31 @@ export function truncate(text: string, max: number): string {
 
 export function statusText(v: ReasoningDecisionView | null, s: Settings, pending: ReasoningLevel | null, stats: Stats): string {
   const lines = [
-    `Modus: ${MODE_LABEL[s.mode]} · Priorität: ${PRIORITY_LABEL[s.priority]} · Bereich: ${label(s.minLevel)}–${label(s.maxLevel)}` +
-      (s.mode === 'manual' ? ` · manuelle Stufe: ${s.manualLevel ? label(s.manualLevel) : 'Sitzung (/effort)'}` : ''),
-    `Eskalation: ${s.autoEscalation ? 'an' : 'aus'} · Anzeige: ${s.showDecision ? 'an' : 'aus'} · KI-Klassifizierung: ${s.aiClassifier ? 'an' : 'aus'}`,
+    `Mode: ${MODE_LABEL[s.mode]} · Priority: ${PRIORITY_LABEL[s.priority]} · Range: ${label(s.minLevel)}–${label(s.maxLevel)}` +
+      (s.mode === 'manual' ? ` · manual level: ${s.manualLevel ? label(s.manualLevel) : 'session (/effort)'}` : ''),
+    `Escalation: ${s.autoEscalation ? 'on' : 'off'} · Show decision: ${s.showDecision ? 'on' : 'off'} · AI classification: ${s.aiClassifier ? 'on' : 'off'}`,
   ]
-  if (pending !== null) lines.push(`Nächster Auftrag: ${label(pending)} (manuelle Überschreibung)`)
-  if (v !== null) lines.push('Letzte Entscheidung:\n' + decisionNotice(v))
+  if (pending !== null) lines.push(`Next task: ${label(pending)} (manual override)`)
+  if (v !== null) lines.push('Last decision:\n' + decisionNotice(v))
   if (stats.total > 0) {
     const dist = LEVELS.map(l => `${label(l)} ${stats.byLevel[l] ?? 0}`).join(', ')
-    lines.push(`Statistik (${stats.total} Aufträge): ${dist}; Eskalationen ${stats.escalations}, Überschreibungen ${stats.overrides}`)
+    lines.push(`Statistics (${stats.total} tasks): ${dist}; escalations ${stats.escalations}, overrides ${stats.overrides}`)
   }
   return lines.join('\n')
 }
 
 export const HELP = [
-  '/reasoning                    Status anzeigen',
-  '/reasoning <stufe>            Stufe für den nächsten Auftrag (low|medium|high|xhigh|max)',
-  '/reasoning auto               Überschreibung verwerfen, automatisch wählen',
-  '/reasoning mode <modus>       auto|balanced|quality|speed|manual',
-  '/reasoning max-level <stufe>  medium|high|xhigh|max (Obergrenze)',
-  '/reasoning min-level <stufe>  low|medium|high (Untergrenze)',
-  '/reasoning priority <wert>    efficiency|balanced|quality',
-  '/reasoning manual <stufe>     session|low|medium|high|xhigh|max (Stufe im Modus manual)',
+  '/reasoning                    Show status',
+  '/reasoning <level>            Level for the next task (low|medium|high|xhigh|max)',
+  '/reasoning auto               Discard the override, choose automatically',
+  '/reasoning mode <mode>        auto|balanced|quality|speed|manual',
+  '/reasoning max-level <level>  medium|high|xhigh|max (upper limit)',
+  '/reasoning min-level <level>  low|medium|high (lower limit)',
+  '/reasoning priority <value>   efficiency|balanced|quality',
+  '/reasoning manual <level>     session|low|medium|high|xhigh|max (level in manual mode)',
   '/reasoning escalation on|off · display on|off · ai on|off',
-  '/reasoning settings           Einstellungsfenster öffnen',
-  '/reasoning reset-stats        Statistik löschen',
+  '/reasoning settings           Open the settings pane',
+  '/reasoning reset-stats        Clear the statistics',
 ].join('\n')
 
 // Anonymous decision metadata kept across sessions ($.store): counts only.
@@ -197,7 +197,7 @@ export function parseCommand(args: string): CommandAction {
   if (entry) {
     const value = (rest[0] ?? '').toLowerCase()
     if (!entry.allowed.includes(value)) {
-      return { kind: 'error', message: `Erlaubt für ${word}: ${entry.allowed.join(', ')}` }
+      return { kind: 'error', message: `Allowed for ${word}: ${entry.allowed.join(', ')}` }
     }
     return { kind: 'choice', field: entry.field, value }
   }
@@ -205,9 +205,9 @@ export function parseCommand(args: string): CommandAction {
   if (toggle) {
     const value = (rest[0] ?? '').toLowerCase()
     if (value !== 'on' && value !== 'off' && value !== 'an' && value !== 'aus') {
-      return { kind: 'error', message: `Erlaubt für ${word}: on, off` }
+      return { kind: 'error', message: `Allowed for ${word}: on, off` }
     }
     return { kind: 'toggle', field: toggle, value: value === 'on' || value === 'an' }
   }
-  return { kind: 'error', message: `Unbekanntes Argument "${head}".\n${HELP}` }
+  return { kind: 'error', message: `Unknown argument "${head}".\n${HELP}` }
 }

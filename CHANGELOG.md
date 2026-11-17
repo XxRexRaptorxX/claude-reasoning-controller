@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 – 2026-11-17
+
+- The whole interface is now in English: status line, notices, `/reasoning` output, settings pane and `/config` rows.
+- Task analysis still understands German prompts; the reference tasks are tested in English and German.
+- Better English classification: "small" now narrows scope instead of difficulty, and "list" is recognised as a writing task.
+- The German README (`docs/README.de.md`) is removed.
+
 ## 0.2.3 – 2026-11-13
 
 - The mod submits no prompts anymore: `/reasoning <level> <task>` only notes the level; you send the task yourself.

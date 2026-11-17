@@ -85,7 +85,7 @@ export const MODE_LABEL: Record<Mode, string> = {
 }
 
 export const PRIORITY_LABEL: Record<Priority, string> = {
-  efficiency: 'Maximale Effizienz',
-  balanced: 'Ausgewogen',
-  quality: 'Maximale Qualität',
+  efficiency: 'Maximum efficiency',
+  balanced: 'Balanced',
+  quality: 'Maximum quality',
 }

@@ -6,7 +6,6 @@ A Claude Code mod that picks the right **effort level** (`low`, `medium`, `high`
 
 The goal is not maximum reasoning. The goal is the effort a task needs: quick answers stay fast and cheap, and hard debugging, large refactors or security reviews get the depth they deserve.
 
-> **Language:** the mod's interface (status line, notices, `/reasoning` output) is in **German**. Full German documentation: [docs/README.de.md](docs/README.de.md).
 
 ```
 Reasoning · AUTO | Currently · HIGH | Max Limit · MAX
@@ -36,7 +35,7 @@ In the desktop app, where `/plugin` does not run: click **+** next to the prompt
 
 Claude Code raises the `turn.step` event before every model request, with the `effort` that request would carry. The mod answers `next({ ...e, effort })`, which changes the request's real effort parameter. It never changes the prompt.
 
-1. **Local task analysis (no extra model call):** each task is scored 0–3 on seven dimensions: complexity, scope, error-proneness, correctness demand, autonomy, ambiguity and verification effort. The task type gives base values; the wording and the structure of the prompt (file references, numbered steps, stack traces) adjust them. Single keywords never decide on their own. Scope only counts in proportion to how hard the work is, so a long but simple list stays `low` while a short but hard proof gets at least `high`.
+1. **Local task analysis (no extra model call):** each task is scored 0–3 on seven dimensions: complexity, scope, error-proneness, correctness demand, autonomy, ambiguity and verification effort. The task type gives base values; the wording and the structure of the prompt (file references, numbered steps, stack traces) adjust them. Single keywords never decide on their own. Scope only counts in proportion to how hard the work is, so a long but simple list stays `low` while a short but hard proof gets at least `high`. It understands prompts in English and German.
 2. **Selection strategy:** it starts from the session's own level (`/effort` or the model default). It lowers that level only for clearly simple tasks and uses `xhigh`/`max` only with structural justification. Close calls keep the previous level (hysteresis). Long conversations are not stepped down by a single level, to protect the prompt cache. Follow-ups such as "ok, continue" keep the current level.
 3. **Model-aware:** it knows which levels each model family takes and picks the nearest supported level. For example, `xhigh` becomes `high` on Opus 4.6. Models without effort support are left untouched.
 4. **Escalation (optional):** after three failed tool calls in one task, or when Claude calls the `request_more_reasoning` tool, the rest of the task runs one level higher, within your maximum.
@@ -137,7 +136,7 @@ claude plugin validate .
 claude plugin test .
 ```
 
-The 61 tests in `tests/` cover:
+The 69 tests in `tests/` cover:
 
 - the reference tasks,
 - keyword robustness,

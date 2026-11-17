@@ -104,13 +104,13 @@ export function decide(input: DecideInput): Decision {
       level: undefined,
       requested: undefined,
       source: 'unsupported',
-      reasons: ['Dieses Modell nimmt keine Effort-Einstellung an'],
+      reasons: ['This model takes no effort setting'],
     }
   }
 
   // 1. A /reasoning override wins over everything the person configured.
   if (input.override !== undefined) {
-    return finish(base, profile, input.override, 'override', 'down', undefined, ['manuell für diesen Auftrag gewählt'])
+    return finish(base, profile, input.override, 'override', 'down', undefined, ['chosen manually for this task'])
   }
 
   // 2. MANUAL mode.
@@ -121,10 +121,10 @@ export function decide(input: DecideInput): Decision {
         level: undefined,
         requested: input.baseline,
         source: 'session',
-        reasons: ['MANUAL: Sitzungsstufe (/effort) bleibt unverändert'],
+        reasons: ['MANUAL: session level (/effort) left unchanged'],
       }
     }
-    return finish(base, profile, settings.manualLevel, 'manual', 'down', undefined, ['MANUAL: feste Stufe aus den Einstellungen'])
+    return finish(base, profile, settings.manualLevel, 'manual', 'down', undefined, ['MANUAL: fixed level from the settings'])
   }
 
   const mp = modeProfile(settings)
@@ -133,13 +133,13 @@ export function decide(input: DecideInput): Decision {
   // 3. A short follow-up continues the task at the level it had.
   if (analysis.isContinuation && input.previous !== undefined) {
     return finish(base, profile, input.previous.level, 'continuation', mp.prefer, undefined, [
-      'Fortsetzung des vorherigen Auftrags',
+      'continues the previous task',
     ])
   }
   if (analysis.isContinuation) {
     // Nothing to continue from (new session, reload): the session's level.
     const level = clampLevel(input.baseline, bounds.min, bounds.max)
-    return finish(base, profile, level, 'fallback', mp.prefer, bounds.max, ['Fortsetzung ohne frühere Entscheidung: Sitzungsstufe'])
+    return finish(base, profile, level, 'fallback', mp.prefer, bounds.max, ['follow-up without an earlier decision: session level'])
   }
 
   // 4. Automatic choice.
@@ -152,15 +152,15 @@ export function decide(input: DecideInput): Decision {
 
   if (input.aiHint !== undefined && analysis.confidence < 0.6) {
     requested = input.aiHint
-    notes.push(`KI-Klassifizierung: ${label(input.aiHint)}`)
+    notes.push(`AI classification: ${label(input.aiHint)}`)
   } else if (analysis.confidence < 0.5) {
     requested = input.baseline
     source = 'fallback'
-    reasons.splice(0, reasons.length, 'Auftrag nicht eindeutig einzuordnen: Standardstufe der Sitzung')
+    reasons.splice(0, reasons.length, 'task not clearly classifiable: session default level')
   } else if (rank(demand) < rank(input.baseline) && analysis.confidence < 0.6) {
     // Lower than the session's level only for clearly simple tasks.
     requested = input.baseline
-    notes.push('nur bei eindeutig einfachen Aufträgen unter die Standardstufe')
+    notes.push('goes below the default level only for clearly simple tasks')
   } else {
     requested = demand
   }
@@ -168,7 +168,7 @@ export function decide(input: DecideInput): Decision {
   if (mp.cap !== undefined) requested = minOf(requested, mp.cap)
   if (mp.floor !== undefined) requested = maxOf(requested, mp.floor)
   const clamped = clampLevel(requested, bounds.min, bounds.max)
-  if (clamped !== requested) notes.push(`${label(requested)} durch Einstellungen auf ${label(clamped)} begrenzt`)
+  if (clamped !== requested) notes.push(`${label(requested)} limited to ${label(clamped)} by the settings`)
   requested = clamped
 
   // 5. Avoid needless switching: a close call keeps the previous level, and a
@@ -185,8 +185,8 @@ export function decide(input: DecideInput): Decision {
       if (isClose || isLongStepDown) {
         notes.push(
           isClose
-            ? `${label(prevLevel)} beibehalten (knappe Entscheidung)`
-            : `${label(prevLevel)} beibehalten (langer Verlauf, Prompt-Cache)`,
+            ? `kept ${label(prevLevel)} (close call)`
+            : `kept ${label(prevLevel)} (long conversation, prompt cache)`,
         )
         requested = prevLevel
       }
@@ -216,9 +216,9 @@ function finish(
   const level = nearestSupported(requested, allowed.length > 0 ? allowed : profile.levels, prefer)
   const notes = [...base.notes]
   if (level !== undefined && level !== requested) {
-    notes.push(`${label(requested)} wird von ${profile.family} nicht unterstützt: ${label(level)}`)
+    notes.push(`${label(requested)} is not supported by ${profile.family}: ${label(level)}`)
   }
-  if (!profile.isKnown) notes.push('Modell unbekannt: Claude Code passt nicht unterstützte Stufen selbst an')
+  if (!profile.isKnown) notes.push('unknown model: Claude Code adjusts unsupported levels itself')
   return {
     ...base,
     reasons: extraReasons ?? base.reasons,

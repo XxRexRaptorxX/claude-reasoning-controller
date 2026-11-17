@@ -31,7 +31,7 @@ describe('manual override', () => {
   test('an override is still held to the model: XHIGH on Opus 4.6 becomes HIGH', () => {
     const d = decide({ analysis: analyze(QUESTION), settings: DEFAULTS, model: 'claude-opus-4-6', baseline: 'high', override: 'xhigh' })
     expect(d.level).toBe('high')
-    expect(d.notes.join(' ')).toContain('nicht unterstützt')
+    expect(d.notes.join(' ')).toContain('is not supported')
   })
 
   test('the command parser reads levels, modes and toggles', () => {

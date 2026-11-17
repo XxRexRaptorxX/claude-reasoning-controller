@@ -31,7 +31,7 @@ describe('the eight reference tasks (default settings, Opus 5.5)', () => {
     const level = levelFor('Finde und behebe einen schwer reproduzierbaren Fehler in einer bestehenden Codebasis.')
     expect(['high', 'xhigh', 'max']).toContain(level)
     expect(analyze('Finde und behebe einen schwer reproduzierbaren Fehler in einer bestehenden Codebasis.').categoryLabel).toBe(
-      'Komplexes Debugging',
+      'Complex debugging',
     )
   })
 
@@ -125,5 +125,39 @@ describe('settings are parsed defensively', () => {
   test('manualLevel "session" means: leave /effort alone', () => {
     expect(parseSettings({ manualLevel: 'session' }).manualLevel).toBeUndefined()
     expect(parseSettings({ manualLevel: 'high' }).manualLevel).toBe('high')
+  })
+})
+
+describe('the eight reference tasks in English (default settings, Opus 5.5)', () => {
+  test('1: a basic Java question is LOW', () => {
+    expect(levelFor('Hi, how does a Java variable work?')).toBe('low')
+  })
+
+  test('2: renaming a variable is LOW', () => {
+    expect(levelFor('Rename this variable.')).toBe('low')
+  })
+
+  test('3: a manageable new feature is MEDIUM', () => {
+    expect(levelFor('Implement a small new feature in my project.')).toBe('medium')
+  })
+
+  test('4: a hard-to-reproduce bug in an existing codebase is HIGH or above', () => {
+    expect(['high', 'xhigh', 'max']).toContain(levelFor('Find and fix a hard to reproduce bug in an existing codebase.'))
+  })
+
+  test('5: whole-project architecture analysis plus large refactoring plan is XHIGH', () => {
+    expect(levelFor('Analyze the architecture of my entire project and plan an extensive refactoring.')).toBe('xhigh')
+  })
+
+  test('6: an in-depth security analysis of a complex implementation is MAX', () => {
+    expect(levelFor('Perform an in-depth security analysis of a complex implementation.')).toBe('max')
+  })
+
+  test('7: a simple but very long list is not raised for its size', () => {
+    expect(levelFor('Create a simple but very extensive list.')).toBe('low')
+  })
+
+  test('8: a short but mathematically hard problem gets high effort', () => {
+    expect(['high', 'xhigh', 'max']).toContain(levelFor('Solve a short but mathematically difficult problem.'))
   })
 })

@@ -35,7 +35,7 @@ export type Category =
 
 export type Analysis = {
   category: Category
-  /** German label for the UI, e.g. "Komplexes Debugging". */
+  /** Label for the UI, e.g. "Complex debugging". */
   categoryLabel: string
   dims: Dims
   /** Scope weighted by how demanding the work is (0..3). */
@@ -70,53 +70,53 @@ const CATEGORIES: readonly CategoryDef[] = [
     id: 'greeting',
     test: /^(hallo|hi|hey|moin|servus|guten (morgen|tag|abend)|hello|danke( dir| schoen)?|thanks|thank you)[\s!,.]*$/,
     base: ZERO,
-    label: 'Begrüßung',
+    label: 'Greeting',
     trivial: true,
   },
   {
     id: 'question',
     test: /^(\w+[,!]?\s+)?(wie|was|warum|wieso|weshalb|wozu|wann|wo|welche[rsmn]?|gibt es|kann man|erklaer\w*|what|how|why|when|where|which|is there|explain|does|do|is|are|can)\b|\?\s*$/,
     base: ZERO,
-    label: 'Einfache Frage',
+    label: 'Simple question',
     trivial: true,
   },
   {
     id: 'trivial_edit',
     test: /\b(umbenenn\w*|benenne\b.*\bum\b|rename\w*|tippfehler\w*|typos?|rechtschreib\w*|formatier\w*|einrueck\w*|indent\w*|kommentare? (hinzufueg|ergaenz)\w*|add (a )?comments?|sortier\w* (die )?imports|sort imports|(entferne|loesche) (den |die |das )?(unbenutzt|ungenutzt)\w*|remove unused|(loesche|entferne) (diese|die) zeile|delete (this|the) line|aendere (den|die|das) (text|wert|namen|farbe|label)|change the (text|value|name|color|label))\b/,
     base: ZERO,
-    label: 'Kleine, eindeutige Änderung',
+    label: 'Small, well-defined change',
     trivial: true,
   },
   {
     id: 'content',
-    test: /\b(liste\w*|auflist\w*|list (of|all)|brainstorm\w*|ideen|ideas|vorschlaege|suggestions|entwurf|entwirf|draft|zusammenfass\w*|summar\w*|uebersetz\w*|translate|formulier\w*|(schreib\w*|verfass\w*) (einen|eine|ein) (kurzen? |kleinen? )?(text|e-?mail|mail|brief|beitrag|post|artikel|gedicht|slogan)|write (a|an) (short )?(email|text|post|article|poem|slogan))\b/,
+    test: /\b(liste\w*|auflist\w*|lists?|brainstorm\w*|ideen|ideas|vorschlaege|suggestions|entwurf|entwirf|draft|zusammenfass\w*|summar\w*|uebersetz\w*|translate|formulier\w*|(schreib\w*|verfass\w*) (einen|eine|ein) (kurzen? |kleinen? )?(text|e-?mail|mail|brief|beitrag|post|artikel|gedicht|slogan)|write (a|an) (short )?(email|text|post|article|poem|slogan))\b/,
     base: ZERO,
-    label: 'Inhalt, Liste oder Entwurf',
+    label: 'Content, list or draft',
     trivial: true,
   },
   {
     id: 'implement',
     test: /\b(implementier(e|en|t)?|implement|fuege? .{0,40}\bhinzu|hinzufueg\w*|add (a|an|the|support|new)\b|(erstell|bau|programmier|entwickl)\w* (eine?[nmrs]?|die|den|das|neue?[nmrs]?) (\w+ ){0,2}(funktion|methode|klasse|komponente|endpoint|endpunkt|api|modul|feature|seite|formular|skript|script|anwendung|app|plugin|mod|dienst|service)|build (a|an|the)|(schreib\w*) (eine?[nmrs]?) (\w+ ){0,2}(funktion|methode|klasse|skript|script)|write (a|an) (function|class|script|method|component)|create (a|an) (function|class|component|endpoint|app)|neue[nmrs]? (funktion|funktionalitaet|feature)|new feature)\b/,
     base: d(1, 1, 0, 0, 1, 0, 1),
-    label: 'Feature-Implementierung',
+    label: 'Feature implementation',
   },
   {
     id: 'modify',
     test: /\b(aender\w*|passe? .{0,40}\ban\b|anpass\w*|update\w*|aktualisier\w*|erweiter\w*|change|modify|extend|adjust|tweak)\b/,
     base: d(1, 1, 0, 0, 1, 0, 0),
-    label: 'Codeänderung',
+    label: 'Code change',
   },
   {
     id: 'tests',
     test: /\b(tests? (schreiben|schreib|hinzufueg|ergaenz)\w*|schreib\w* (\w+ ){0,2}tests?|write (\w+ ){0,2}tests?|unit ?tests?|testabdeckung|test coverage)\b/,
     base: d(1, 1, 0, 1, 1, 0, 1),
-    label: 'Tests schreiben',
+    label: 'Writing tests',
   },
   {
     id: 'devops',
     test: /\b(deploy\w*|docker\w*|kubernetes|k8s|ci\/cd|pipeline\w*|github actions|terraform|helm)\b/,
     base: d(1, 1, 1, 0, 1, 0, 1),
-    label: 'Build/Deployment',
+    label: 'Build/deployment',
   },
   {
     id: 'debug',
@@ -128,31 +128,31 @@ const CATEGORIES: readonly CategoryDef[] = [
     id: 'perf',
     test: /\b(performance|optimier\w*|optimi[sz]\w*|langsam|slow|speicherleck\w*|memory leaks?|latenz|latency|durchsatz|throughput|bottlenecks?|engpass)\b/,
     base: d(2, 1, 1, 0, 1, 2, 2),
-    label: 'Performance-Analyse',
+    label: 'Performance analysis',
   },
   {
     id: 'analysis',
     test: /\b(analysier\w*|analyse|analysis|analy[sz]e|untersuch\w*|investigat\w*|review\w*|pruef\w*|audit\w*|bewerte\w*|evaluier\w*|evaluate|begutacht\w*|assess\w*)\b/,
     base: d(2, 1, 0, 0, 1, 1, 1),
-    label: 'Technische Analyse',
+    label: 'Technical analysis',
   },
   {
     id: 'refactor_arch',
     test: /\b(refactor\w*|refaktor\w*|umstrukturier\w*|restrukturier\w*|architektur\w*|architecture|architectur\w*|redesign\w*|neu (strukturier|aufbau|gestalt)\w*|modularisier\w*|migrier\w*|migration|portier\w*|port (to|from)|umstell\w*|rewrite|neu schreiben)\b/,
     base: d(2, 2, 2, 1, 2, 1, 2),
-    label: 'Architektur/Refactoring',
+    label: 'Architecture/refactoring',
   },
   {
     id: 'security',
     test: /\b(sicherheit\w*|security|vulnerab\w*|schwachstell\w*|sicherheitsluecke\w*|exploit\w*|injection|xss|csrf|ssrf|authentifizier\w*|authentication|autorisier\w*|authorization|kryptograph\w*|cryptograph\w*|verschluessel\w*|encrypt\w*|pentest\w*|threat model\w*|bedrohungs\w*|owasp|cve)\b/,
     base: d(1, 0, 3, 3, 1, 1, 2),
-    label: 'Sicherheitsanalyse',
+    label: 'Security analysis',
   },
   {
     id: 'math',
     test: /\b(beweis\w*|prove|proof|theorem|lemma|mathemat\w*|gleichung\w*|equations?|integral\w*|ableitung\w*|derivative|kombinatori\w*|combinatori\w*|wahrscheinlichkeit\w*|probabilit\w*|zahlentheori\w*|number theory|algebra\w*|geometri\w*|induktion\w*|induction|invariante?n?|komplexitaetsklasse\w*|np-(hart|hard|vollstaendig|complete)|optimalitaet|optimality)\b/,
     base: d(2, 0, 0, 2, 0, 1, 1),
-    label: 'Mathematisches Problem',
+    label: 'Mathematical problem',
   },
 ]
 
@@ -160,7 +160,7 @@ const DIFFICULTY =
   /schwer reproduzierbar|nicht reproduzierbar|hard to reproduce|intermittier\w*|sporadisch\w*|flaky|race conditions?|wettlaufbedingung\w*|deadlocks?|heisenbug|nebenlaeufig\w*|concurren\w*|nicht offensichtlich\w*|non-?obvious|subtil\w*|subtle|schwierig\w*|\bschwer\b|\bhard\b|difficult|tricky|knifflig\w*|anspruchsvoll\w*|challenging|tiefgehend\w*|tiefgreifend\w*|in-?depth|\bdeep\b|gruendlich\w*|thorough\w*|rigoros\w*|rigorous|\bformal\w*|komplex\w*|complex\w*|kompliziert\w*|complicated|ursache (ist )?(unbekannt|unklar)|unknown cause|raetselhaft\w*|mysterious/g
 
 const SIMPLE =
-  /\b(einfach\w*|simple|simpel\w*|trivial\w*|kurz\w*|quick\w*|schnell\w*|nur|just|kleine?[rnms]?|small|minor|leicht\w*|easy|basic|grundlegend\w*)\b/g
+  /\b(einfach\w*|simple|simpel\w*|trivial\w*|kurz\w*|quick\w*|schnell\w*|minor|leicht\w*|easy|basic|grundlegend\w*)\b/g
 
 const SMALL_SCOPE =
   /\b(nur|just|kleine?[rnms]?|small|einzelne?[rnms]?|single|ueberschaubar\w*|manageable|diese[rsn]? (eine )?(zeile|variable|funktion|datei|methode|stelle)|this (line|variable|function|file|method))\b/g
@@ -344,13 +344,13 @@ export function analyze(text: string): Analysis {
 function continuation(): Analysis {
   return {
     category: 'unknown',
-    categoryLabel: 'Fortsetzung',
+    categoryLabel: 'Follow-up',
     dims: { ...ZERO },
     effectiveScope: 0,
     score: 0,
     confidence: 0.9,
     isContinuation: true,
-    traits: ['Fortsetzung des vorherigen Auftrags'],
+    traits: ['continues the previous task'],
   }
 }
 
@@ -363,28 +363,28 @@ function round(n: number): number {
 }
 
 function labelFor(category: Category, base: string | undefined, dims: Dims): string {
-  if (category === 'unknown') return 'Allgemeiner Auftrag'
-  if (category === 'debug' && dims.complexity >= 3) return 'Komplexes Debugging'
-  if (category === 'question' && dims.complexity >= 2) return 'Anspruchsvolle Frage'
-  if (category === 'implement' && (dims.scope >= 3 || dims.autonomy >= 3)) return 'Umfangreiche Implementierung'
-  if (category === 'security' && dims.complexity >= 3) return 'Tiefgehende Sicherheitsanalyse'
-  if (category === 'math' && dims.complexity >= 3) return 'Schwieriges mathematisches Problem'
-  return base ?? 'Allgemeiner Auftrag'
+  if (category === 'unknown') return 'General task'
+  if (category === 'debug' && dims.complexity >= 3) return 'Complex debugging'
+  if (category === 'question' && dims.complexity >= 2) return 'Demanding question'
+  if (category === 'implement' && (dims.scope >= 3 || dims.autonomy >= 3)) return 'Large implementation'
+  if (category === 'security' && dims.complexity >= 3) return 'In-depth security analysis'
+  if (category === 'math' && dims.complexity >= 3) return 'Hard mathematical problem'
+  return base ?? 'General task'
 }
 
 function traitsFor(dims: Dims, effectiveScope: number, words: number): string[] {
   const t: string[] = []
-  if (dims.complexity >= 3) t.push(words <= 15 ? 'kurz formuliert, aber inhaltlich schwierig' : 'hohe inhaltliche Schwierigkeit')
-  else if (dims.complexity === 2) t.push('anspruchsvolles Problem')
-  if (effectiveScope >= 2) t.push('viele Dateien oder Komponenten betroffen')
-  if (dims.risk >= 2) t.push('relevante Seiteneffekte möglich')
-  if (dims.correctness >= 3) t.push('sehr hohe Korrektheitsanforderung')
-  else if (dims.correctness === 2) t.push('hohe Korrektheitsanforderung')
-  if (dims.autonomy >= 2) t.push('mehrstufige, eigenständige Bearbeitung')
-  if (dims.ambiguity >= 2) t.push('mehrere mögliche Ursachen oder Lösungswege')
-  if (dims.verification >= 2) t.push('umfangreiche Verifikation nötig')
+  if (dims.complexity >= 3) t.push(words <= 15 ? 'short, but hard' : 'high intrinsic difficulty')
+  else if (dims.complexity === 2) t.push('demanding problem')
+  if (effectiveScope >= 2) t.push('many files or components involved')
+  if (dims.risk >= 2) t.push('relevant side effects possible')
+  if (dims.correctness >= 3) t.push('correctness is critical')
+  else if (dims.correctness === 2) t.push('high correctness demand')
+  if (dims.autonomy >= 2) t.push('multi-step, autonomous work')
+  if (dims.ambiguity >= 2) t.push('several possible causes or approaches')
+  if (dims.verification >= 2) t.push('extensive verification needed')
   if (t.length === 0) {
-    t.push(dims.scope >= 1 && effectiveScope < 1 ? 'umfangreich, aber inhaltlich einfach' : 'klar umrissene, überschaubare Aufgabe')
+    t.push(dims.scope >= 1 && effectiveScope < 1 ? 'long, but simple' : 'clear, well-scoped task')
   }
   return t
 }

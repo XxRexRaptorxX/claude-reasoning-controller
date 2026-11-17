@@ -65,8 +65,8 @@ test('AUTO: every request of a hard debugging task is sent at HIGH; a question a
   await step($, 't1', 1)
   await step($, 't1', 2)
   expect(sent.map(s => s.effort)).toEqual(['high', 'high', 'high'])
-  expect(logs[0]).toContain('Erkannte Aufgabe: Komplexes Debugging')
-  expect(logs[0]).toContain('Ausgewählte Reasoning-Stufe: HIGH')
+  expect(logs[0]).toContain('Detected task: Complex debugging')
+  expect(logs[0]).toContain('Selected reasoning level: HIGH')
   // The notice names traits, never the prompt itself.
   expect(logs[0]).not.toContain('Codebasis')
 
@@ -137,7 +137,7 @@ test('escalation on: three failed tool calls raise the rest of the task', async 
   for (let i = 0; i < 3; i++) await $.tool.call({ tool: 'Bash', command: 'npm test' })
   await step($, 't1', 1)
   expect(sent.map(s => s.effort)).toEqual(['high', 'xhigh'])
-  expect(logs.some(l => l.includes('Eskalation HIGH → XHIGH'))).toBe(true)
+  expect(logs.some(l => l.includes('escalation HIGH → XHIGH'))).toBe(true)
 })
 
 test('escalation on: Claude can ask for more reasoning through the tool', async ($, on) => {
@@ -214,7 +214,7 @@ test('statistics are kept across sessions as counts only', async ($, on) => {
   await $.turn.start({ text: 'Benenne diese Variable um.', turnId: 't1' })
   await step($, 't1', 0)
   const status = await reasoning($, 'status')
-  expect(status.text).toContain('Statistik (1 Aufträge)')
+  expect(status.text).toContain('Statistics (1 tasks)')
   expect(status.text).not.toContain('Variable')
 })
 
@@ -295,10 +295,10 @@ test('a level picked with effort-cycle keys wins: requests pass unchanged, no es
   for (let i = 0; i < 3; i++) await $.tool.call({ tool: 'Bash', command: 'npm test' })
   await step($, 't1', 1)
   expect(sent.map(s => s.effort)).toEqual(['medium', 'medium'])
-  expect(logs[0]).toContain('Tastatur-Wahl (effort-cycle)')
-  expect(logs[0]).toContain('Ausgewählte Reasoning-Stufe: LOW')
-  expect(logs[0]).toContain('/reasoning MAX übergangen')
-  expect(logs.some(l => l.includes('Eskalation'))).toBe(false)
+  expect(logs[0]).toContain('keyboard pick (effort-cycle)')
+  expect(logs[0]).toContain('Selected reasoning level: LOW')
+  expect(logs[0]).toContain('/reasoning MAX skipped')
+  expect(logs.some(l => l.includes('escalation'))).toBe(false)
 })
 
 test('a pick for another model is ignored', async ($, on) => {

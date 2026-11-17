@@ -56,27 +56,27 @@ const pending = atom({ plugin: 'reasoning-controller', key: 'pending' } as const
 type PaneRow = { field: Field; title: string; options: readonly string[]; labelOf: (o: string) => string }
 
 const PANE_ROWS: readonly PaneRow[] = [
-  { field: 'mode', title: 'Arbeitsmodus', options: MODES, labelOf: o => MODE_LABEL[o as keyof typeof MODE_LABEL] ?? o },
-  { field: 'maxLevel', title: 'Maximale Stufe', options: MAX_CHOICES, labelOf: o => o.toUpperCase() },
-  { field: 'minLevel', title: 'Minimale Stufe', options: MIN_CHOICES, labelOf: o => o.toUpperCase() },
+  { field: 'mode', title: 'Working mode', options: MODES, labelOf: o => MODE_LABEL[o as keyof typeof MODE_LABEL] ?? o },
+  { field: 'maxLevel', title: 'Max level', options: MAX_CHOICES, labelOf: o => o.toUpperCase() },
+  { field: 'minLevel', title: 'Min level', options: MIN_CHOICES, labelOf: o => o.toUpperCase() },
   {
     field: 'priority',
-    title: 'Kosten/Zeit',
+    title: 'Cost/time priority',
     options: PRIORITIES,
     labelOf: o => PRIORITY_LABEL[o as keyof typeof PRIORITY_LABEL] ?? o,
   },
   {
     field: 'manualLevel',
-    title: 'Stufe bei MANUAL',
+    title: 'Level in MANUAL mode',
     options: MANUAL_CHOICES,
     labelOf: o => (o === 'session' ? '/effort' : o.toUpperCase()),
   },
 ]
 
 const PANE_TOGGLES: readonly { field: 'autoEscalation' | 'showDecision' | 'aiClassifier'; title: string }[] = [
-  { field: 'autoEscalation', title: 'Automatische Eskalation' },
-  { field: 'showDecision', title: 'Entscheidung anzeigen' },
-  { field: 'aiClassifier', title: 'KI-Klassifizierung (kleines Modell)' },
+  { field: 'autoEscalation', title: 'Automatic escalation' },
+  { field: 'showDecision', title: 'Show decision' },
+  { field: 'aiClassifier', title: 'AI classification (small model)' },
 ]
 
 function valueOf(s: Settings, field: Field): string | boolean {
@@ -145,7 +145,7 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'reasoning',
-      description: 'Reasoning-Controller: Status, Stufe für den nächsten Auftrag, Modus und Einstellungen',
+      description: 'Reasoning controller: status, level for the next task, mode and settings',
       argumentHint: '[low|medium|high|xhigh|max | auto | mode … | max-level … | settings]',
       immediate: true,
     })
@@ -217,8 +217,8 @@ export const register: Register = (on, options) => {
           ? {
               ...decided,
               source: 'keys',
-              reasons: ['per Tastatur gewählt (effort-cycle, Strg+↑/↓)'],
-              notes: info.override ? [...decided.notes, `/reasoning ${label(info.override)} übergangen: Tastatur-Wahl hat Vorrang`] : decided.notes,
+              reasons: ['picked with the keyboard (effort-cycle, Ctrl+↑/↓)'],
+              notes: info.override ? [...decided.notes, `/reasoning ${label(info.override)} skipped: the keyboard pick wins`] : decided.notes,
             }
           : decided
       info.decision = decision
@@ -265,7 +265,7 @@ export const register: Register = (on, options) => {
   on('tool.call', { tool: 'mcp__reasoning-controller__request_more_reasoning' }, async ($, e) => {
     const raw = (e as { reason?: unknown }).reason
     const reason = typeof raw === 'string' ? raw.slice(0, 120) : ''
-    const text = await escalateCurrent($, rt, `von Claude angefordert${reason ? ': ' + reason : ''}`, true)
+    const text = await escalateCurrent($, rt, `requested by Claude${reason ? ': ' + reason : ''}`, true)
     return { result: text }
   }).catch(() => ({ result: 'Escalation unavailable; continue at the current effort.' }))
 
@@ -277,7 +277,7 @@ export const register: Register = (on, options) => {
       if (info) {
         info.toolErrors += 1
         if (info.toolErrors === TOOL_ERRORS_TO_ESCALATE && info.escalatedTo === undefined) {
-          await escalateCurrent($, rt, `${TOOL_ERRORS_TO_ESCALATE} fehlgeschlagene Tool-Aufrufe`, false)
+          await escalateCurrent($, rt, `${TOOL_ERRORS_TO_ESCALATE} failed tool calls`, false)
         }
       }
     }
@@ -296,12 +296,12 @@ export const register: Register = (on, options) => {
       }
       case 'clear':
         await update($, pending, () => null)
-        return { text: 'Keine Überschreibung: der nächste Auftrag wird automatisch eingestuft.' }
+        return { text: 'No override: the next task is classified automatically.' }
       case 'override': {
         // The mod submits no prompts: text after the level is not sent.
         await update($, pending, () => action.level)
-        const hint = action.prompt !== '' ? ' Den Auftrag bitte jetzt als eigene Nachricht senden.' : ''
-        return { text: `Reasoning ${label(action.level)} für den nächsten Auftrag (einmalig).${hint}` }
+        const hint = action.prompt !== '' ? ' Now send the task as a message of its own.' : ''
+        return { text: `Reasoning ${label(action.level)} for the next task (once).${hint}` }
       }
       case 'choice':
       case 'toggle': {
@@ -334,16 +334,16 @@ export const register: Register = (on, options) => {
             r = await $.config.set({ key: 'reasoning-controller.aiClassifier', value: value })
             break
         }
-        const shown = typeof value === 'boolean' ? (value ? 'an' : 'aus') : value
-        return { text: r.deny ? `Nicht geändert: ${r.deny}` : `${action.field} = ${shown} (gespeichert).` }
+        const shown = typeof value === 'boolean' ? (value ? 'on' : 'off') : value
+        return { text: r.deny ? `Not changed: ${r.deny}` : `${action.field} = ${shown} (saved).` }
       }
       case 'settings': {
-        const r = await $.ui.open({ id: PANE_ID, title: 'Reasoning-Einstellungen', focus: true, closeOnEscape: true })
-        return { text: r.isPlaced ? 'Einstellungen geöffnet.' : 'Einstellungen: /config (Zeilen "Reasoning: …").' }
+        const r = await $.ui.open({ id: PANE_ID, title: 'Reasoning settings', focus: true, closeOnEscape: true })
+        return { text: r.isPlaced ? 'Settings opened.' : 'Settings: /config (rows "Reasoning: …").' }
       }
       case 'reset-stats':
         await $.store.delete(STATS_KEY)
-        return { text: 'Statistik gelöscht.' }
+        return { text: 'Statistics cleared.' }
       case 'error':
         return { text: action.message }
     }
@@ -374,7 +374,7 @@ export const register: Register = (on, options) => {
     const v = await read($, current)
     return (
       <Box flexDirection="column">
-        <Text dimColor>Gilt für neue Aufträge. Gespeichert in den Einstellungen (auch unter /config).</Text>
+        <Text dimColor>Applies to new tasks. Saved in your settings (also under /config).</Text>
         {PANE_ROWS.map(row => (
           <Box flexDirection="column">
             <Text bold>{row.title}</Text>
@@ -397,10 +397,10 @@ export const register: Register = (on, options) => {
         ))}
         <Text dimColor>
           {v === null || v.source === 'unsupported'
-            ? 'Noch keine Entscheidung in dieser Sitzung.'
-            : `Zuletzt: ${v.categoryLabel} → ${v.level ? label(v.level) : 'unverändert'}`}
+            ? 'No decision in this session yet.'
+            : `Last: ${v.categoryLabel} → ${v.level ? label(v.level) : 'unchanged'}`}
         </Text>
-        <Button key="close" label="Schließen" role="dismiss" onPress={handledByPressHook} />
+        <Button key="close" label="Close" role="dismiss" onPress={handledByPressHook} />
       </Box>
     )
   })
