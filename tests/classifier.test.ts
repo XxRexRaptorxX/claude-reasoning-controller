@@ -161,3 +161,129 @@ describe('the eight reference tasks in English (default settings, Opus 5.5)', ()
     expect(['high', 'xhigh', 'max']).toContain(levelFor('Solve a short but mathematically difficult problem.'))
   })
 })
+
+// The same eight reference tasks in more languages. Each row: the prompts
+// for tasks 1–8, in order.
+const TRANSLATIONS: Record<string, readonly string[]> = {
+  Spanish: [
+    'Hola, ¿cómo funciona una variable en Java?',
+    'Renombra esta variable.',
+    'Implementa una pequeña función nueva en mi proyecto.',
+    'Encuentra y corrige un error difícil de reproducir en una base de código existente.',
+    'Analiza la arquitectura de todo mi proyecto y planifica una refactorización extensa.',
+    'Realiza un análisis de seguridad a fondo de una implementación compleja.',
+    'Crea una lista sencilla pero muy extensa.',
+    'Resuelve un problema corto pero matemáticamente difícil.',
+  ],
+  French: [
+    'Bonjour, comment fonctionne une variable Java ?',
+    'Renomme cette variable.',
+    'Implémente une petite nouvelle fonction dans mon projet.',
+    'Trouve et corrige un bug difficile à reproduire dans une base de code existante.',
+    "Analyse l'architecture de tout mon projet et planifie un vaste refactoring.",
+    "Effectue une analyse de sécurité approfondie d'une implémentation complexe.",
+    'Crée une liste simple mais très longue.',
+    'Résous un problème court mais mathématiquement difficile.',
+  ],
+  Russian: [
+    'Привет, как работает переменная в Java?',
+    'Переименуй эту переменную.',
+    'Реализуй небольшую новую функцию в моём проекте.',
+    'Найди и исправь трудно воспроизводимую ошибку в существующей кодовой базе.',
+    'Проанализируй архитектуру всего моего проекта и спланируй масштабный рефакторинг.',
+    'Проведи глубокий анализ безопасности сложной реализации.',
+    'Составь простой, но очень длинный список.',
+    'Реши короткую, но математически сложную задачу.',
+  ],
+  Chinese: [
+    '你好，Java 变量是如何工作的？',
+    '重命名这个变量。',
+    '在我的项目中实现一个小的新功能。',
+    '在现有代码库中找到并修复一个难以复现的错误。',
+    '分析我整个项目的架构，并规划一次大规模重构。',
+    '对一个复杂的实现进行深入的安全分析。',
+    '创建一个简单但非常长的列表。',
+    '解决一个简短但数学上很难的问题。',
+  ],
+  Japanese: [
+    'こんにちは、Javaの変数はどのように動作しますか？',
+    'この変数の名前を変更して。',
+    '私のプロジェクトに小さな新機能を実装して。',
+    '既存のコードベースで再現しにくいバグを見つけて修正して。',
+    'プロジェクト全体のアーキテクチャを分析して、大規模なリファクタリングを計画して。',
+    '複雑な実装について徹底的なセキュリティ分析を行って。',
+    'シンプルだけどとても長いリストを作って。',
+    '短いけれど数学的に難しい問題を解いて。',
+  ],
+}
+
+const EXPECTED: readonly (readonly string[])[] = [
+  ['low'],
+  ['low'],
+  ['medium'],
+  ['high', 'xhigh', 'max'],
+  ['xhigh'],
+  ['max'],
+  ['low'],
+  ['high', 'xhigh', 'max'],
+]
+
+for (const [language, prompts] of Object.entries(TRANSLATIONS)) {
+  describe(`the eight reference tasks in ${language}`, () => {
+    prompts.forEach((prompt, i) => {
+      test(`${i + 1}: ${prompt}`, () => {
+        expect(EXPECTED[i]).toContain(levelFor(prompt))
+      })
+    })
+  })
+}
+
+describe('languages without a vocabulary', () => {
+  test('an unclear prompt in another language uses the session level, not the maximum', () => {
+    const d = decide({ analysis: analyze('Korjaa tämä virhe, kiitos.'), settings: DEFAULTS, model: MODEL, baseline: BASELINE })
+    expect(d.level).toBe(BASELINE)
+  })
+
+  test('language-neutral signals still count: a stack trace means debugging', () => {
+    const a = analyze('Mikä tässä on vialla?\n```\nTraceback (most recent call last):\n  File "app.py", line 3\n```')
+    expect(a.category).toBe('debug')
+  })
+})
+
+// Spot checks for the other languages with a vocabulary: a question, a rename
+// and a hard bug.
+const SPOT_CHECKS: Record<string, readonly [string, string, string]> = {
+  Portuguese: [
+    'Olá, como funciona uma variável em Java?',
+    'Renomeie esta variável.',
+    'Encontre e corrija um erro difícil de reproduzir em uma base de código existente.',
+  ],
+  Italian: [
+    'Ciao, come funziona una variabile in Java?',
+    'Rinomina questa variabile.',
+    'Trova e correggi un errore difficile da riprodurre in una base di codice esistente.',
+  ],
+  Dutch: [
+    'Hallo, hoe werkt een variabele in Java?',
+    'Hernoem deze variabele.',
+    'Vind en repareer een moeilijk reproduceerbare fout in een bestaande codebase.',
+  ],
+  Polish: [
+    'Cześć, jak działa zmienna w Javie?',
+    'Zmień nazwę tej zmiennej.',
+    'Znajdź i napraw trudny do odtworzenia błąd w istniejącym kodzie.',
+  ],
+  Korean: [
+    '안녕하세요, Java 변수는 어떻게 작동하나요?',
+    '이 변수의 이름을 바꿔 주세요.',
+    '기존 코드베이스에서 재현하기 어려운 버그를 찾아서 고쳐 주세요.',
+  ],
+}
+
+for (const [language, [question, rename, hardBug]] of Object.entries(SPOT_CHECKS)) {
+  describe(`spot checks in ${language}`, () => {
+    test(`question is LOW: ${question}`, () => expect(levelFor(question)).toBe('low'))
+    test(`rename is LOW: ${rename}`, () => expect(levelFor(rename)).toBe('low'))
+    test(`hard bug is HIGH or above: ${hardBug}`, () => expect(['high', 'xhigh', 'max']).toContain(levelFor(hardBug)))
+  })
+}

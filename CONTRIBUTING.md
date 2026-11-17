@@ -7,6 +7,7 @@ Issues and pull requests are welcome.
 | Path | Purpose |
 |---|---|
 | `hooks/lib/classifier.ts` | Local task analysis (pure, no I/O) |
+| `hooks/lib/multilingual.ts` | Task vocabulary for languages beyond English and German: add a language here |
 | `hooks/lib/policy.ts` | Selection strategy (pure) |
 | `hooks/lib/models.ts` | Effort levels per model family: add new models here |
 | `hooks/lib/settings.ts` | `userConfig` parsing |

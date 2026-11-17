@@ -11,6 +11,7 @@
 // simple list stays cheap while a short but hard proof does not.
 
 import { atRank, rank, type Level } from './levels'
+import { MULTI_BOOST, MULTI_CATEGORY, MULTI_CONTINUATION } from './multilingual'
 
 export type Dimension = 'complexity' | 'scope' | 'risk' | 'correctness' | 'autonomy' | 'ambiguity' | 'verification'
 
@@ -194,12 +195,30 @@ const FILE_REF =
 const STACK_TRACE = /(exception|traceback|error:|\bat [\w.$]+\(|panicked at|segmentation fault)/
 
 export function fold(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/ä/g, 'ae')
-    .replace(/ö/g, 'oe')
-    .replace(/ü/g, 'ue')
-    .replace(/ß/g, 'ss')
+  return (
+    text
+      .toLowerCase()
+      // German first, as its patterns are written: ä is ae, not a.
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      // Other Latin-script accents dropped: é is e, ñ is n, ł is l.
+      .replace(/ł/g, 'l')
+      .replace(/[\u00c0-\u024f]/g, c => c.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+      // Spanish opening marks and full-width CJK punctuation.
+      .replace(/[¿¡]/g, '')
+      .replace(/？/g, '?')
+      .replace(/！/g, '!')
+  )
+}
+
+/** Words for length-based rules; CJK writes words without spaces. */
+function wordCount(prose: string): number {
+  if (prose.length === 0) return 0
+  const cjk = (prose.match(/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/g) ?? []).length
+  const spaced = prose.split(' ').filter(w => /[^\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(w)).length
+  return spaced + Math.ceil(cjk / 2)
 }
 
 function countDistinct(re: RegExp, text: string): number {
@@ -229,23 +248,29 @@ export function analyze(text: string): Analysis {
   const prose = fold(raw.replace(/```[\s\S]*?(```|$)/g, ' ').replace(/`[^`\n]*`/g, ' '))
     .replace(/\s+/g, ' ')
     .trim()
-  const words = prose.length === 0 ? 0 : prose.split(' ').length
+  const words = wordCount(prose)
 
   if (prose.length === 0 && codeBlocks.length === 0) {
     return continuation()
   }
-  if (prose.length <= 40 && codeBlocks.length === 0 && CONTINUATION.test(prose)) {
+  if (prose.length <= 40 && codeBlocks.length === 0 && (CONTINUATION.test(prose) || MULTI_CONTINUATION.test(prose))) {
     return continuation()
   }
 
   // Task type: every matching type contributes its base, the strongest
   // substantive one names the task. Trivial types name it only when nothing
   // substantive matched.
-  const matched = CATEGORIES.filter(c => c.test.test(prose))
+  const matched = CATEGORIES.filter(c => c.test.test(prose) || (MULTI_CATEGORY[c.id]?.test(prose) ?? false))
   const hasStackTrace = codeBlocks.some(b => STACK_TRACE.test(fold(b)))
   if (hasStackTrace && !matched.some(c => c.id === 'debug')) {
     const debug = CATEGORIES.find(c => c.id === 'debug')
     if (debug) matched.push(debug)
+  }
+  // A recognised small edit (a rename, a typo) is the change itself, not a
+  // general code change on top of it ("名前を変更して": rename, with "change" in it).
+  if (matched.some(c => c.id === 'trivial_edit')) {
+    const i = matched.findIndex(c => c.id === 'modify')
+    if (i !== -1) matched.splice(i, 1)
   }
   const substantive = matched.filter(c => !c.trivial)
   const named =
@@ -262,15 +287,15 @@ export function analyze(text: string): Analysis {
   }
 
   // Modifiers from the wording.
-  const difficulty = countDistinct(DIFFICULTY, prose)
-  const simple = countDistinct(SIMPLE, prose)
-  const smallScope = countDistinct(SMALL_SCOPE, prose)
-  const scope = countDistinct(SCOPE, prose)
-  const risk = countDistinct(RISK, prose)
-  const correctness = countDistinct(CORRECTNESS, prose)
-  const autonomy = countDistinct(AUTONOMY, prose)
-  const ambiguity = countDistinct(AMBIGUITY, prose)
-  const verification = countDistinct(VERIFICATION, prose)
+  const difficulty = countDistinct(DIFFICULTY, prose) + countDistinct(MULTI_BOOST.difficulty, prose)
+  const simple = countDistinct(SIMPLE, prose) + countDistinct(MULTI_BOOST.simple, prose)
+  const smallScope = countDistinct(SMALL_SCOPE, prose) + countDistinct(MULTI_BOOST.smallScope, prose)
+  const scope = countDistinct(SCOPE, prose) + countDistinct(MULTI_BOOST.scope, prose)
+  const risk = countDistinct(RISK, prose) + countDistinct(MULTI_BOOST.risk, prose)
+  const correctness = countDistinct(CORRECTNESS, prose) + countDistinct(MULTI_BOOST.correctness, prose)
+  const autonomy = countDistinct(AUTONOMY, prose) + countDistinct(MULTI_BOOST.autonomy, prose)
+  const ambiguity = countDistinct(AMBIGUITY, prose) + countDistinct(MULTI_BOOST.ambiguity, prose)
+  const verification = countDistinct(VERIFICATION, prose) + countDistinct(MULTI_BOOST.verification, prose)
 
   dims.complexity += Math.min(2, difficulty)
   // "einfach", "kurz", "nur" lower the difficulty only when nothing says the

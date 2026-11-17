@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 – 2026-11-17
+
+- Prompt recognition in 12 languages: English, German, Spanish, French, Portuguese, Italian, Dutch, Polish, Russian, Chinese, Japanese and Korean (`hooks/lib/multilingual.ts`).
+- Language-neutral text handling: accents are folded (é → e, ñ → n, ł → l), Spanish ¿¡ and full-width ？！ are understood, and Chinese, Japanese and Korean are measured by characters rather than spaces.
+- Other languages keep the language-neutral signals and fall back to the session level; the optional AI classification covers every language.
+- A recognised rename or typo fix is no longer also counted as a general code change.
+- 126 tests, including the reference tasks in seven languages.
+
 ## 0.3.0 – 2026-11-17
 
 - The whole interface is now in English: status line, notices, `/reasoning` output, settings pane and `/config` rows.
