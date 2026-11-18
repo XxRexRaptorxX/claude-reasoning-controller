@@ -58,7 +58,7 @@ export function escalationNotice(from: Level | undefined, to: Level, reason: str
 
 export type BandParts = { mode: string; level: string; detail: string; limit: string }
 
-/** The one-line summary above the prompt. */
+/** The parts of a one-line summary (used by /reasoning status). */
 export function bandParts(v: ReasoningDecisionView | null, s: Settings, pending: ReasoningLevel | null): BandParts {
   const mode = MODE_LABEL[s.mode]
   const limit = `Max Limit · ${label(s.maxLevel)}${s.minLevel !== 'low' ? ` | Min Limit · ${label(s.minLevel)}` : ''}`
@@ -114,7 +114,7 @@ export const HELP = [
   '/reasoning reset-stats        Clear the statistics and token counts',
   '/reasoning reset-learning     Forget what was learned from your overrides',
   'Rules and project profiles: /config rows "Reasoning: rules" and "Reasoning: project profiles"',
-  'Click the status line: "Reasoning · …" opens the settings, the level picks the next task\'s level',
+  'Click the status line under the prompt: "Mode ◆ …" opens the settings, the reasoning meter picks the next task\'s level',
 ].join('\n')
 
 // Anonymous decision metadata kept across sessions ($.store): counts only.

@@ -218,23 +218,36 @@ test('statistics are kept across sessions as counts only', async ($, on) => {
   expect(status.text).not.toContain('Variable')
 })
 
+// The status line sits in the hint line under the prompt (terminal and desktop).
 const BAND = {
+  plugin: 'reasoning-controller',
+  component: 'PromptHint',
+  requestId: 'hint',
+  props: { isDraft: false, isWorking: false, hint: '? for shortcuts' },
+} as const
+
+// In the desktop app it sits in the band above the input.
+const FOOTER = {
   plugin: 'reasoning-controller',
   component: 'AbovePrompt',
   requestId: 'band',
   props: { hasSurvey: false, bodyColumns: 100 },
 } as const
 
-test('the band shows mode, level and maximum, no task details, on every surface', async ($, on) => {
+const SITE = { terminal: BAND, desktop: FOOTER } as const
+
+test('the status line reads "Mode ◆ AUTO  ·  Reasoning ▰▰▰▱▱ HIGH  ·  Limit MAX"', async ($, on) => {
   engine(on, [], [])
   await startSession($)
   await $.turn.start({ text: 'Finde und behebe einen schwer reproduzierbaren Fehler in einer bestehenden Codebasis.', turnId: 't1' })
   await step($, 't1', 0)
-  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
-    const ui = await $.ui.mount({ ...BAND, surface } as never)
-    expect((await ui.find({ type: 'Text', text: /^HIGH$/ }))?.text).toBe('HIGH')
-    const rest = (await ui.find({ type: 'Text', text: /Max Limit · MAX/ }))?.text
-    expect(rest).toBe(' | Max Limit · MAX')
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...SITE[surface], surface } as never)
+    expect((await ui.find({ type: 'Text', text: /^AUTO$/ }))?.text).toBe('AUTO')
+    expect((await ui.find({ type: 'Text', text: /^▰+$/ }))?.text).toBe('▰▰▰')
+    expect((await ui.find({ type: 'Text', text: /^▱+$/ }))?.text).toBe('▱▱')
+    expect((await ui.find({ type: 'Text', text: /HIGH$/ }))?.text).toBe(' HIGH')
+    expect((await ui.find({ type: 'Text', text: /Limit/ }))?.text).toBe('  ·  Limit MAX')
     await ui.unmount()
   }
 })
@@ -395,14 +408,14 @@ test('clicking the level on the status line picks the next task level: auto, LOW
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' } as never)
   await ui.press({ key: 'band-level' })
   await ui.press({ key: 'band-level' })
-  expect((await ui.find({ type: 'Text', text: /Next · MEDIUM/ }))?.text).toContain('Next · MEDIUM')
+  expect((await ui.find({ type: 'Text', text: /Next MEDIUM/ }))?.text).toBe('  ·  Next MEDIUM')
   await ui.unmount()
   await $.turn.start({ text: 'Benenne diese Variable um.', turnId: 't1' })
   await step($, 't1', 0)
   expect(sent.map(s => s.effort)).toEqual(['medium'])
 })
 
-test('clicking "Reasoning · AUTO" opens the settings pane', async ($, on) => {
+test('clicking "Mode ◆ AUTO" opens the settings pane', async ($, on) => {
   const opened: string[] = []
   engine(on, [], [])
   on('ui.open', (_, e) => {
@@ -410,7 +423,7 @@ test('clicking "Reasoning · AUTO" opens the settings pane', async ($, on) => {
     return { value: { isPlaced: true } }
   })
   await startSession($)
-  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' } as never)
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' } as never)
   await ui.press({ key: 'band-mode' })
   await ui.unmount()
   expect(opened).toEqual(['reasoning-settings'])
@@ -420,7 +433,7 @@ test('the status line can be hidden', { options: { showStatusLine: false } }, as
   engine(on, [], [])
   await startSession($)
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' } as never)
-  expect(await ui.find({ type: 'Text', text: /Currently/ })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Reasoning/ })).toBeUndefined()
   await ui.unmount()
 })
 
@@ -474,4 +487,20 @@ test('/reasoning status shows output tokens per level', async ($, on) => {
   } as never)
   const status = await reasoning($, 'status')
   expect(status.text).toContain('LOW 1× ~420')
+})
+
+test('each site draws the line only where it is shown: hint line on the terminal, band above the input on desktop', async ($, on) => {
+  engine(on, [], [])
+  await startSession($)
+  const hintOnDesktop = await $.ui.mount({ ...BAND, surface: 'desktop' } as never)
+  expect(await hintOnDesktop.find({ type: 'Text', text: /Reasoning/ })).toBeUndefined()
+  await hintOnDesktop.unmount()
+  const footerOnTerminal = await $.ui.mount({ ...FOOTER, surface: 'terminal' } as never)
+  expect(await footerOnTerminal.find({ type: 'Text', text: /Reasoning/ })).toBeUndefined()
+  await footerOnTerminal.unmount()
+  // On desktop the bar is plain text (no native buttons), coloured like effort-cycle.
+  const band = await $.ui.mount({ ...FOOTER, surface: 'desktop' } as never)
+  expect((await band.find({ type: 'Text', text: /^◆ $/ }))?.text).toBe('◆ ')
+  expect(await band.find({ type: 'Button' } as never)).toBeUndefined()
+  await band.unmount()
 })

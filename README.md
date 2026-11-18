@@ -8,10 +8,15 @@ The goal is not maximum reasoning. The goal is the effort a task needs: quick an
 
 
 ```
-Reasoning · AUTO | Currently · HIGH | Max Limit · MAX
+Mode ◆ AUTO  ·  Reasoning ▰▰▰▱▱ HIGH  ·  Limit MAX
 ```
 
-The current level is coloured from cool to hot (LOW blue, MEDIUM green, HIGH yellow, XHIGH orange, MAX red). **Click** "Reasoning · AUTO" to open the settings, or **click the level** to pick the next task's level (auto → LOW → MEDIUM → HIGH → XHIGH → MAX → auto); a pick shows as `| Next · MAX`. The line can be hidden in the settings.
+The icon shows the working mode: ◆ AUTO, ⚖ BALANCED, ★ QUALITY FIRST, ⚡ SPEED FIRST, ✋ MANUAL. The meter and the level use the same colours as effort-cycle's meter: LOW grey, MEDIUM green, HIGH yellow, XHIGH orange, MAX red. A next-task level shows as `·  Next MAX`, a minimum as `Limit MEDIUM–MAX`.
+
+- **Terminal:** at the left of the hint line under the prompt, before Claude Code's own hint. **Click** "Mode ◆ AUTO" to open the settings, or **click the reasoning meter** to pick the next task's level (auto → LOW → MEDIUM → HIGH → XHIGH → MAX → auto).
+- **Desktop app:** at the left of the band above the input (the desktop app keeps the footer under the input for its own controls). There the line is plain text so that spacing and colours stay right; use `/reasoning settings` and `/reasoning <level>` instead of clicks.
+
+The line can be hidden in the settings.
 
 ## Install
 
@@ -156,8 +161,9 @@ The mod adds one tool, `request_more_reasoning` (listed as `mcp__reasoning-contr
 | `tool.call` (`request_more_reasoning`) | Answers this mod's own escalation tool. |
 | `state.set` (effort-cycle `base`) | Only with effort-cycle installed: while this mod is changing a request's effort, it keeps effort-cycle's record of the engine's own level correct, so a Ctrl+↑/↓ pick is not dropped. It changes nothing else. |
 | `command.run` (`/reasoning`) | Status, one-time overrides and the setting changes listed above. |
-| `ui.render` (`AbovePrompt`) | Draws the line above the prompt: `Reasoning · AUTO \| Currently · HIGH \| Max Limit · MAX`. |
-| `ui.press` (`AbovePrompt`) | A click on the line: the mode opens the settings pane, the level picks the next task's level. |
+| `ui.render` (`PromptHint`) | Terminal: draws the status line at the left of the hint line under the prompt (`Mode ◆ AUTO  ·  Reasoning ▰▰▰▱▱ HIGH  ·  Limit MAX`), followed by Claude Code's own hint. |
+| `ui.render` (`AbovePrompt`) | Desktop app: draws the same line, as plain text, at the left of the band above the input; what other plugins put in that band stays. |
+| `ui.press` (`PromptHint`) | A click on the status line in the terminal: the mode opens the settings pane, the reasoning meter picks the next task's level. |
 | `ui.render` / `ui.press` (pane `reasoning-settings`) | Draws the settings pane and writes the pressed choice to the mod's own `/config` row. |
 
 The mod also reads (never writes) effort-cycle's `override` state, to let your Ctrl+↑/↓ pick win.

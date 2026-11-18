@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0 – 2026-11-18
+
+- New status line: `Mode ◆ AUTO  ·  Reasoning ▰▰▰▱▱ HIGH  ·  Limit MAX`, with an icon per mode (◆ AUTO, ⚖ BALANCED, ★ QUALITY FIRST, ⚡ SPEED FIRST, ✋ MANUAL) and a five-step meter in effort-cycle's colours (LOW grey, MEDIUM green, HIGH yellow, XHIGH orange, MAX red).
+- Terminal: the line moved to the left of the hint line under the prompt and stays clickable.
+- Desktop app: the line sits at the left of the band above the input, as plain text with even spacing; other plugins' content in that band is kept.
+- 169 tests.
+
 ## 0.6.0 – 2026-11-18
 
 - Status line: same words, now with the current level coloured from cool to hot. A click on "Reasoning · AUTO" opens the settings; a click on the level picks the next task's level (auto → LOW → … → MAX → auto). It can be hidden (`/reasoning statusline off`).

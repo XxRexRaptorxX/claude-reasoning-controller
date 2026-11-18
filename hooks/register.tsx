@@ -20,7 +20,6 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { ReasoningDecisionView } from '../types'
 import { analyze, type Analysis } from './lib/classifier'
 import {
-  bandParts,
   countDecision,
   decisionNotice,
   escalationNotice,
@@ -87,8 +86,8 @@ const PANE_TOGGLES: readonly { field: ToggleField; title: string }[] = [
 ]
 
 /** Colour per level on the status line: cool to hot, by theme key. */
-const HEAT: Record<Level, 'suggestion' | 'success' | 'warning' | 'claude' | 'error'> = {
-  low: 'suggestion',
+const HEAT: Record<Level, 'inactive' | 'success' | 'warning' | 'claude' | 'error'> = {
+  low: 'inactive',
   medium: 'success',
   high: 'warning',
   xhigh: 'claude',
@@ -437,32 +436,37 @@ export const register: Register = (on, options) => {
     }
   })
 
-  // ---- the line above the prompt: mode, current level, limits ----
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey || !settings.showStatusLine) return next(e)
-    const v = await read($, current)
-    const p = await read($, pending)
-    const { Box, Text, Button } = $.ui.resolve(e)
-    const parts = bandParts(v, settings, p)
-    const nextLevel = p !== null ? ` | Next · ${p.toUpperCase()}` : ''
-    const shown = v?.level ?? v?.baseline
-    // Same words as before; the mode opens the settings, the level picks the
-    // next task's level (a press reaches the ui.press hook below).
+  // ---- the status line under the input ----
+  // Terminal: at the left of the hint line ("? for shortcuts"), PromptHint.
+  // Desktop app: the footer under the input has only a narrow slot on the
+  // right, so the bar goes into the band above the input, at its left, beside
+  // whatever other plugins put there (effort-cycle's hidden key buttons).
+  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
+    if (!settings.showStatusLine || e.surface !== 'terminal') return next(e)
+    const engineHint = await next(e)
+    const bar = statusBar($.ui.resolve(e), await read($, current), await read($, pending), settings, true)
+    const { Box, Text } = $.ui.resolve(e)
     return (
       <Box>
-        <Button key="band-mode" plain onPress={handledByPressHook}>
-          <Text dimColor>Reasoning · </Text>
-          <Text bold>{parts.mode}</Text>
-        </Button>
-        <Text dimColor> | Currently · </Text>
-        <Button key="band-level" plain onPress={handledByPressHook}>
-          <Text bold {...(shown && v?.source !== 'unsupported' ? { color: HEAT[shown] } : {})}>
-            {parts.level}
-          </Text>
-        </Button>
-        <Text dimColor>
-          {nextLevel} | {parts.limit}
-        </Text>
+        {bar}
+        <Text>{'    '}</Text>
+        {engineHint}
+      </Box>
+    )
+  })
+
+  // Desktop app: the footer under the input has only a narrow slot, so the
+  // bar goes into the band above the input, at its left, beside whatever
+  // other plugins put there (effort-cycle's hidden key buttons).
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (!settings.showStatusLine || e.surface !== 'desktop' || e.props.hasSurvey) return next(e)
+    const others = await next(e)
+    const bar = statusBar($.ui.resolve(e), await read($, current), await read($, pending), settings, false)
+    const { Box } = $.ui.resolve(e)
+    return (
+      <Box>
+        {bar}
+        {others}
       </Box>
     )
   })
@@ -505,6 +509,12 @@ export const register: Register = (on, options) => {
   })
 
   // ---- a click on the status line ----
+  on('ui.press', { plugin: 'reasoning-controller', component: 'PromptHint' }, async ($, e) => {
+    if (e.element === 'band-level') await update($, pending, p => nextPending(p))
+    if (e.element === 'band-mode') await $.ui.open({ id: PANE_ID, title: 'Reasoning settings', focus: true, closeOnEscape: true })
+    return { element: e.element }
+  })
+
   on('ui.press', { plugin: 'reasoning-controller', component: 'AbovePrompt' }, async ($, e) => {
     if (e.element === 'band-level') await update($, pending, p => nextPending(p))
     if (e.element === 'band-mode') await $.ui.open({ id: PANE_ID, title: 'Reasoning settings', focus: true, closeOnEscape: true })
@@ -596,6 +606,80 @@ async function keysChoice($: EngineInterface, model: string): Promise<Level | un
   } catch {
     return undefined
   }
+}
+
+type ElementTable = ReturnType<EngineInterface['ui']['resolve']>
+
+/** An icon per working mode, before its name. */
+const MODE_ICON: Record<Settings['mode'], string> = {
+  auto: '◆',
+  balanced: '⚖',
+  quality: '★',
+  speed: '⚡',
+  manual: '✋',
+}
+
+/**
+ * Mode ◆ AUTO  ·  Reasoning ▰▰▰▱▱ HIGH  ·  Limit MAX, coloured like
+ * effort-cycle's meter. `clickable`: the mode and the reasoning part are plain
+ * Buttons (band-mode / band-level). The desktop app draws a Button as its own
+ * native control, with padding and without the colours inside, so there the
+ * bar is plain text.
+ */
+function statusBar(
+  el: ElementTable,
+  v: ReasoningDecisionView | null,
+  p: Level | null,
+  settings: Settings,
+  clickable: boolean,
+): ReturnType<ElementTable['Box']> {
+  const { Box, Text, Button } = el
+  const shown = v !== null && v.source !== 'unsupported' ? (v.level ?? v.baseline) : undefined
+  const filled = shown ? LEVELS.indexOf(shown) + 1 : 0
+  const heat = shown ? { color: HEAT[shown] } : {}
+  const word = shown
+    ? label(shown) + (v?.escalated ? ' ↑' : '')
+    : v?.source === 'unsupported'
+      ? '—'
+      : settings.mode === 'manual' && settings.manualLevel === undefined
+        ? '/effort'
+        : 'READY'
+  const limit = settings.minLevel !== 'low' ? `${label(settings.minLevel)}–${label(settings.maxLevel)}` : label(settings.maxLevel)
+  const mode = [
+    <Text dimColor>Mode </Text>,
+    <Text color="claude">{MODE_ICON[settings.mode] + ' '}</Text>,
+    <Text bold>{MODE_LABEL[settings.mode]}</Text>,
+  ]
+  const reasoning = [
+    <Text dimColor>Reasoning </Text>,
+    filled > 0 && <Text {...heat}>{'▰'.repeat(filled)}</Text>,
+    filled < LEVELS.length && <Text dimColor>{'▱'.repeat(LEVELS.length - filled)}</Text>,
+    <Text bold {...heat}>
+      {' ' + word}
+    </Text>,
+  ]
+  const SEP = '  ·  '
+  return (
+    <Box>
+      {clickable ? (
+        <Button key="band-mode" plain onPress={handledByPressHook}>
+          {mode}
+        </Button>
+      ) : (
+        mode
+      )}
+      <Text dimColor>{SEP}</Text>
+      {clickable ? (
+        <Button key="band-level" plain onPress={handledByPressHook}>
+          {reasoning}
+        </Button>
+      ) : (
+        reasoning
+      )}
+      {p !== null && <Text dimColor>{`${SEP}Next ${label(p)}`}</Text>}
+      <Text dimColor>{`${SEP}Limit ${limit}`}</Text>
+    </Box>
+  )
 }
 
 async function sessionFolder($: EngineInterface): Promise<string> {
