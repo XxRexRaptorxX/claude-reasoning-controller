@@ -109,9 +109,12 @@ export const HELP = [
   '/reasoning priority <value>   efficiency|balanced|quality',
   '/reasoning manual <level>     session|low|medium|high|xhigh|max (level in manual mode)',
   '/reasoning ai off|unclear|always  Ask the small model for the level: never, when unclear, always',
-  '/reasoning escalation on|off · display on|off',
+  '/reasoning escalation on|off · display on|off · statusline on|off · learning on|off',
   '/reasoning settings           Open the settings pane',
-  '/reasoning reset-stats        Clear the statistics',
+  '/reasoning reset-stats        Clear the statistics and token counts',
+  '/reasoning reset-learning     Forget what was learned from your overrides',
+  'Rules and project profiles: /config rows "Reasoning: rules" and "Reasoning: project profiles"',
+  'Click the status line: "Reasoning · …" opens the settings, the level picks the next task\'s level',
 ].join('\n')
 
 // Anonymous decision metadata kept across sessions ($.store): counts only.
@@ -161,9 +164,10 @@ export type CommandAction =
   | { kind: 'clear' }
   | { kind: 'override'; level: Level; prompt: string }
   | { kind: 'choice'; field: 'mode' | 'maxLevel' | 'minLevel' | 'priority' | 'manualLevel' | 'aiClassification'; value: string }
-  | { kind: 'toggle'; field: 'autoEscalation' | 'showDecision'; value: boolean }
+  | { kind: 'toggle'; field: 'autoEscalation' | 'showDecision' | 'showStatusLine' | 'learnFromOverrides'; value: boolean }
   | { kind: 'settings' }
   | { kind: 'reset-stats' }
+  | { kind: 'reset-learning' }
   | { kind: 'error'; message: string }
 
 const CHOICE_FIELDS: Record<string, { field: 'mode' | 'maxLevel' | 'minLevel' | 'priority' | 'manualLevel' | 'aiClassification'; allowed: readonly string[] }> = {
@@ -177,7 +181,9 @@ const CHOICE_FIELDS: Record<string, { field: 'mode' | 'maxLevel' | 'minLevel' | 
   ai: { field: 'aiClassification', allowed: AI_MODES },
 }
 
-const TOGGLES: Record<string, 'autoEscalation' | 'showDecision'> = {
+const TOGGLES: Record<string, 'autoEscalation' | 'showDecision' | 'showStatusLine' | 'learnFromOverrides'> = {
+  statusline: 'showStatusLine',
+  learning: 'learnFromOverrides',
   escalation: 'autoEscalation',
   display: 'showDecision',
   transparency: 'showDecision',
@@ -193,6 +199,7 @@ export function parseCommand(args: string): CommandAction {
   if (word === 'auto') return { kind: 'clear' }
   if (word === 'settings' || word === 'einstellungen') return { kind: 'settings' }
   if (word === 'reset-stats') return { kind: 'reset-stats' }
+  if (word === 'reset-learning') return { kind: 'reset-learning' }
   if (isLevel(word)) return { kind: 'override', level: word, prompt: tail }
   const entry = CHOICE_FIELDS[word]
   if (entry) {

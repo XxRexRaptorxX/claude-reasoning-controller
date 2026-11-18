@@ -3,6 +3,8 @@
 // reference written, with literal plugin and key, in the file that uses it.
 
 export const STATS_KEY = 'stats'
+export const USAGE_KEY = 'usage'
+export const LEARN_KEY = 'learned'
 export const PANE_ID = 'reasoning-settings'
 export const ESCALATION_TOOL = 'request_more_reasoning'
 

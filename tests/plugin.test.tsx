@@ -385,3 +385,93 @@ test('AI classification failing falls back to the local analysis', { options: { 
   await step($, 't1', 0)
   expect(sent.map(s => s.effort)).toEqual(['high'])
 })
+
+// ---- status line clicks, hiding, rules, learning, profiles, cost overview ----
+
+test('clicking the level on the status line picks the next task level: auto, LOW, MEDIUM …', async ($, on) => {
+  const sent: Sent[] = []
+  engine(on, sent, [])
+  await startSession($)
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' } as never)
+  await ui.press({ key: 'band-level' })
+  await ui.press({ key: 'band-level' })
+  expect((await ui.find({ type: 'Text', text: /Next · MEDIUM/ }))?.text).toContain('Next · MEDIUM')
+  await ui.unmount()
+  await $.turn.start({ text: 'Benenne diese Variable um.', turnId: 't1' })
+  await step($, 't1', 0)
+  expect(sent.map(s => s.effort)).toEqual(['medium'])
+})
+
+test('clicking "Reasoning · AUTO" opens the settings pane', async ($, on) => {
+  const opened: string[] = []
+  engine(on, [], [])
+  on('ui.open', (_, e) => {
+    opened.push(String((e as { id?: unknown }).id))
+    return { value: { isPlaced: true } }
+  })
+  await startSession($)
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' } as never)
+  await ui.press({ key: 'band-mode' })
+  await ui.unmount()
+  expect(opened).toEqual(['reasoning-settings'])
+})
+
+test('the status line can be hidden', { options: { showStatusLine: false } }, async ($, on) => {
+  engine(on, [], [])
+  await startSession($)
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' } as never)
+  expect(await ui.find({ type: 'Text', text: /Currently/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a rule from the settings decides the level', { options: { rules: '/quick=low' } }, async ($, on) => {
+  const sent: Sent[] = []
+  engine(on, sent, [])
+  await startSession($)
+  await $.turn.start({ text: '/quick Finde und behebe einen schwer reproduzierbaren Fehler in einer bestehenden Codebasis.', turnId: 't1' })
+  await step($, 't1', 0)
+  expect(sent.map(s => s.effort)).toEqual(['low'])
+})
+
+test('a project profile caps the level in its folder', { options: { projectProfiles: 'playground: max=medium' } }, async ($, on) => {
+  const sent: Sent[] = []
+  engine(on, sent, [])
+  on('session.cwd', () => ({ value: 'D:\Code\Playground\app' }))
+  await startSession($)
+  await $.turn.start({ text: 'Führe eine tiefgehende Sicherheitsanalyse einer komplexen Implementierung durch.', turnId: 't1' })
+  await step($, 't1', 0)
+  expect(sent.map(s => s.effort)).toEqual(['medium'])
+})
+
+test('after three overrides one level up, that task type runs one level higher', async ($, on) => {
+  const sent: Sent[] = []
+  engine(on, sent, [])
+  await startSession($)
+  for (let i = 1; i <= 3; i++) {
+    await reasoning($, 'medium')
+    await $.turn.start({ text: 'Benenne diese Variable um.', turnId: `o${i}` })
+    await step($, `o${i}`, 0)
+  }
+  await $.turn.start({ text: 'Benenne diese Variable um.', turnId: 't4' })
+  await step($, 't4', 0)
+  expect(sent.map(s => s.effort)).toEqual(['medium', 'medium', 'medium', 'medium'])
+  const status = await reasoning($, 'status')
+  expect(status.text).toContain('Learned from your overrides: trivial_edit +1')
+})
+
+test('/reasoning status shows output tokens per level', async ($, on) => {
+  engine(on, [], [])
+  await startSession($)
+  await $.turn.start({ text: 'Benenne diese Variable um.', turnId: 't1' })
+  await step($, 't1', 0)
+  await $.turn.complete({
+    turnId: 't1',
+    answer: '',
+    durationMs: 1,
+    isAborted: false,
+    reason: 'answer',
+    usage: { input_tokens: 0, output_tokens: 420, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, model: 'claude-opus-5-5' },
+  } as never)
+  const status = await reasoning($, 'status')
+  expect(status.text).toContain('LOW 1× ~420')
+})

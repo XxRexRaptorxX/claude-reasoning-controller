@@ -1,6 +1,6 @@
 {
   "name": "reasoning-controller",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Adaptive Reasoning Controller: picks the right effort level (low to max) for every task and actually sends it with each model request via turn.step.",
   "author": { "name": "XxRexRaptorxX", "url": "https://github.com/XxRexRaptorxX" },
   "homepage": "https://github.com/XxRexRaptorxX/claude-reasoning-controller#readme",
@@ -62,6 +62,30 @@
       "description": "Lets Claude Code's small, fast model choose the level. off = local analysis only; unclear = only when the local analysis is unsure; always = before every new task (one short request and a little latency per task). Limits and modes still apply.",
       "options": ["off", "unclear", "always"],
       "default": "off"
+    },
+    "showStatusLine": {
+      "type": "boolean",
+      "title": "Reasoning: show the status line",
+      "description": "The line above the prompt (Reasoning · AUTO | Currently · HIGH | Max Limit · MAX). Click the mode to open the settings, the level to pick the next task's level.",
+      "default": true
+    },
+    "rules": {
+      "type": "string",
+      "title": "Reasoning: rules",
+      "description": "Your own rules, separated by ';'. text=level (exactly), text>=level (at least), text<=level (at most); text is matched in the prompt. Example: /quick=low; infra/>=high; readme<=medium",
+      "default": ""
+    },
+    "learnFromOverrides": {
+      "type": "boolean",
+      "title": "Reasoning: learn from my overrides",
+      "description": "When you often pick another level with /reasoning for the same kind of task, adjust that kind by one level (after 3 overrides). Keeps task types and level steps only, never prompt text.",
+      "default": true
+    },
+    "projectProfiles": {
+      "type": "string",
+      "title": "Reasoning: project profiles",
+      "description": "Limits per project folder, separated by ';'. folder-part: min=level max=level. Example: playground: max=high; payments-api: min=medium",
+      "default": ""
     }
   }
 }

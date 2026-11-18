@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 – 2026-11-18
+
+- Status line: same words, now with the current level coloured from cool to hot. A click on "Reasoning · AUTO" opens the settings; a click on the level picks the next task's level (auto → LOW → … → MAX → auto). It can be hidden (`/reasoning statusline off`).
+- Cost overview in `/reasoning`: average output tokens per task and level, and an estimate of the tokens saved against always running at HIGH.
+- Your own rules (`/config` → "Reasoning: rules"), e.g. `/quick=low; infra/>=high; readme<=medium`.
+- Learning from your overrides: after three `/reasoning` overrides in the same direction for a task type, that type runs one level higher or lower. Task types and level steps only; `/reasoning reset-learning`; can be turned off.
+- Project profiles (`/config` → "Reasoning: project profiles"): min/max per project folder, e.g. `playground: max=high`.
+- README: fixed a broken row in the command table.
+- 168 tests.
+
 ## 0.5.0 – 2026-11-18
 
 - New task type "Routine operation": git commit/push/pull, running tests, building, installing dependencies, showing a file or log run at `low`, in all 12 languages, even when the session runs at `high`. A prompt that also asks for real work (fixing a bug, resolving merge conflicts) is still classified by that work.

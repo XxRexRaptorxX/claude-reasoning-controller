@@ -11,6 +11,8 @@ The goal is not maximum reasoning. The goal is the effort a task needs: quick an
 Reasoning · AUTO | Currently · HIGH | Max Limit · MAX
 ```
 
+The current level is coloured from cool to hot (LOW blue, MEDIUM green, HIGH yellow, XHIGH orange, MAX red). **Click** "Reasoning · AUTO" to open the settings, or **click the level** to pick the next task's level (auto → LOW → MEDIUM → HIGH → XHIGH → MAX → auto); a pick shows as `| Next · MAX`. The line can be hidden in the settings.
+
 ## Install
 
 Requires Claude Code **2.1.275 or later** (function-hooks mods). It was developed and tested with 2.1.321.
@@ -53,9 +55,10 @@ Claude Code raises the `turn.step` event before every model request, with the `e
 | `/reasoning min-level low\|medium\|high` | Lower limit |
 | `/reasoning priority efficiency\|balanced\|quality` | Cost/time priority |
 | `/reasoning manual session\|low…max` | Level in MANUAL mode (`session` = leave `/effort` alone) |
-| `/reasoning ai off|unclear|always` | AI classification by the small model: never, when unclear, for every task |
-| `/reasoning escalation on|off` · `display on|off` | Toggles |\|off` · `display on\|off` · `ai on\|off` | Toggles |
+| `/reasoning ai off\|unclear\|always` | AI classification by the small model: never, when unclear, for every task |
+| `/reasoning escalation on\|off` · `display on\|off` · `statusline on\|off` · `learning on\|off` | Toggles |
 | `/reasoning settings` | Settings pane |
+| `/reasoning reset-stats` · `reset-learning` | Clear the statistics and token counts · forget what was learned |
 
 All settings are stored in `settings.json` (under `pluginConfigs`) and appear as rows in `/config`.
 
@@ -68,6 +71,36 @@ All settings are stored in `settings.json` (under `pluginConfigs`) and appear as
 | Automatic escalation | on |
 | Show decision before each task | on |
 | AI classification (small model): off, unclear, always | off |
+| Show the status line | on |
+| Rules (text, see below) | empty |
+| Learn from my overrides | on |
+| Project profiles (text, see below) | empty |
+
+### Rules
+
+Your own rules in `/config` → "Reasoning: rules", separated by `;`. The text is matched case-insensitively in the prompt:
+
+```
+/quick=low; infra/>=high; readme<=medium
+```
+
+`text=level` sets the level exactly, `text>=level` sets a minimum, `text<=level` a maximum. Rules apply before your min/max limits. `/reasoning` lists the rules in force and any it could not read.
+
+### Project profiles
+
+Limits per project folder in `/config` → "Reasoning: project profiles", separated by `;`. The text before `:` is matched against the session's folder path; the first match replaces min/max for that session:
+
+```
+playground: max=high; payments-api: min=medium max=xhigh
+```
+
+### Learning from your overrides
+
+When you pick another level with `/reasoning <level>` (or a click on the status line), the controller notes how far your pick was from its own choice for that **task type**. After three such overrides in the same direction, that task type runs one level higher or lower (never more than one, always within your limits). Only task types and level steps are kept, never prompt text. `/reasoning reset-learning` forgets it; it can be turned off in the settings.
+
+### Cost overview
+
+`/reasoning` shows the average output tokens per task for each level (thinking included) and, once at least three tasks ran at HIGH, an estimate of the output tokens saved against running everything at HIGH.
 
 ## Works with effort-cycle
 
@@ -83,7 +116,7 @@ When [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle) is insta
 
 ## Privacy
 
-- **No prompt text is stored.** Session state holds only task traits. The persistent store holds counts only (levels, escalations, overrides).
+- **No prompt text is stored.** Session state holds only task traits. The persistent store holds counts only: decisions per level, escalations, overrides, output tokens per level, and the level steps learned per task type.
 - No extra model calls unless you enable the optional AI classification. It then sends the first 4,000 characters of the prompt (only unclear ones with `unclear`, every new task with `always`) to Claude Code's own small, fast model.
 - The only thing the model sees from this mod is the short description of the escalation tool, and only while escalation is enabled.
 - The mod reads no credentials and no environment variables, and it makes no network requests of its own.
@@ -103,7 +136,7 @@ The mod **submits no prompts** of its own. It never modifies, extends or replace
 
 ### Configuration and environment
 
-- **Configuration:** the mod writes only its **own** settings, which are the eight `/config` rows listed under *Usage* (stored by Claude Code in `settings.json` under `pluginConfigs`, keys `reasoning-controller.<field>`). It writes them only when you change one through `/reasoning mode|max-level|min-level|priority|manual|escalation|display|ai …` or the `/reasoning settings` pane. It never writes any other setting.
+- **Configuration:** the mod writes only its **own** settings, which are the twelve `/config` rows listed under *Usage* (stored by Claude Code in `settings.json` under `pluginConfigs`, keys `reasoning-controller.<field>`). It writes them only when you change one through `/reasoning mode|max-level|min-level|priority|manual|ai|escalation|display|statusline|learning …` or the `/reasoning settings` pane (rules and project profiles only in `/config`). It never writes any other setting.
 - **Environment variables:** none are set or read.
 - **Effort:** the effort level is not written to any setting. It is passed per request through `turn.step` (see *How it works*), so `/effort` and your settings files stay as they are.
 
@@ -118,12 +151,13 @@ The mod adds one tool, `request_more_reasoning` (listed as `mcp__reasoning-contr
 | `session.start` | Registers the `/reasoning` command and, if escalation is on, the `request_more_reasoning` tool. |
 | `turn.start` (main conversation only) | Analyses the new task locally and takes a pending `/reasoning <level>` override. Optionally asks the small model for the level: for unclear tasks or for every task (AI classification, off by default). |
 | `turn.step` (main conversation only) | Decides the level on the turn's first request, then sends **every request of the turn** with that `effort` (`next({ ...e, effort })`). Subagent requests, models without effort and an active effort-cycle pick pass through unchanged. |
-| `turn.complete` | Forgets the finished turn's in-memory data. |
+| `turn.complete` | Adds the turn's output-token count to the cost overview (counts only) and forgets the turn's in-memory data. |
 | `tool.call` (all tools) | Observes results only: three failed calls in one task raise the effort (escalation). It always returns what the tool returned. |
 | `tool.call` (`request_more_reasoning`) | Answers this mod's own escalation tool. |
 | `state.set` (effort-cycle `base`) | Only with effort-cycle installed: while this mod is changing a request's effort, it keeps effort-cycle's record of the engine's own level correct, so a Ctrl+↑/↓ pick is not dropped. It changes nothing else. |
 | `command.run` (`/reasoning`) | Status, one-time overrides and the setting changes listed above. |
 | `ui.render` (`AbovePrompt`) | Draws the line above the prompt: `Reasoning · AUTO \| Currently · HIGH \| Max Limit · MAX`. |
+| `ui.press` (`AbovePrompt`) | A click on the line: the mode opens the settings pane, the level picks the next task's level. |
 | `ui.render` / `ui.press` (pane `reasoning-settings`) | Draws the settings pane and writes the pressed choice to the mod's own `/config` row. |
 
 The mod also reads (never writes) effort-cycle's `override` state, to let your Ctrl+↑/↓ pick win.
@@ -138,13 +172,14 @@ claude plugin validate .
 claude plugin test .
 ```
 
-The 152 tests in `tests/` cover:
+The 168 tests in `tests/` cover:
 
 - the reference tasks (in English, German, Spanish, French, Russian, Chinese and Japanese, plus spot checks in Portuguese, Italian, Dutch, Polish and Korean),
 - keyword robustness,
 - overrides, unsupported levels and model families,
 - user profiles, hysteresis and escalation,
-- settings persistence and the UI,
+- settings persistence and the UI (clicks on the status line, hiding it),
+- rules, project profiles, learning from overrides and the cost overview,
 - the effort-cycle interplay,
 - the effort actually sent on each request.
 

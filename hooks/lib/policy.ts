@@ -3,8 +3,9 @@
 // Pure: every input is passed in, nothing is read or written here.
 
 import { THRESHOLDS, levelForScore, type Analysis } from './classifier'
-import { clampLevel, label, maxOf, minOf, rank, type Level } from './levels'
+import { clampLevel, label, maxOf, minOf, rank, step, type Level } from './levels'
 import { nearestSupported, profileFor, type ModelProfile } from './models'
+import type { RuleEffect } from './rules'
 import type { Mode, Settings } from './settings'
 
 export type DecisionSource =
@@ -54,6 +55,10 @@ export type DecideInput = {
   messageCount?: number
   /** A level the optional AI classifier proposed. */
   aiHint?: Level
+  /** Whole levels learned from your overrides for this task type (-1, 0, +1). */
+  learnedShift?: number
+  /** What your own rules say about this prompt. */
+  ruleEffect?: RuleEffect
 }
 
 type Profile = { shift: number; cap?: Level; floor?: Level; allowMaxRule: boolean; prefer: 'down' | 'up' }
@@ -163,6 +168,18 @@ export function decide(input: DecideInput): Decision {
     notes.push('goes below the default level only for clearly simple tasks')
   } else {
     requested = demand
+  }
+
+  if (input.learnedShift) {
+    requested = step(requested, input.learnedShift)
+    notes.push(`learned from your overrides: ${input.learnedShift > 0 ? 'one level up' : 'one level down'}`)
+  }
+  const re = input.ruleEffect
+  if (re) {
+    if (re.exact) requested = re.exact
+    if (re.min) requested = maxOf(requested, re.min)
+    if (re.max) requested = minOf(requested, re.max)
+    notes.push(...re.notes)
   }
 
   if (mp.cap !== undefined) requested = minOf(requested, mp.cap)

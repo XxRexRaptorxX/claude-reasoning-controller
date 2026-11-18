@@ -27,6 +27,14 @@ export type Settings = {
   autoEscalation: boolean
   showDecision: boolean
   aiClassification: AiMode
+  /** The line above the prompt. */
+  showStatusLine: boolean
+  /** Your own rules, e.g. "/quick=low; infra/>=high" (see rules.ts). */
+  rules: string
+  /** Adjust per task type when you often override the level for it. */
+  learnFromOverrides: boolean
+  /** Limits per project folder, e.g. "playground: max=high; api: min=medium". */
+  projectProfiles: string
 }
 
 export const DEFAULTS: Settings = {
@@ -38,6 +46,10 @@ export const DEFAULTS: Settings = {
   autoEscalation: true,
   showDecision: true,
   aiClassification: 'off',
+  showStatusLine: true,
+  rules: '',
+  learnFromOverrides: true,
+  projectProfiles: '',
 }
 
 /** The config field names, as `/config` and `$.config.set` key them. */
@@ -50,11 +62,19 @@ export const FIELDS = [
   'autoEscalation',
   'showDecision',
   'aiClassification',
+  'showStatusLine',
+  'rules',
+  'learnFromOverrides',
+  'projectProfiles',
 ] as const
 export type Field = (typeof FIELDS)[number]
 
 function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : fallback
+}
+
+function text(value: unknown): string {
+  return typeof value === 'string' ? value.slice(0, 2000) : ''
 }
 
 function bool(value: unknown, fallback: boolean): boolean {
@@ -77,6 +97,10 @@ export function parseSettings(options: Readonly<Record<string, unknown>> | undef
     autoEscalation: bool(o['autoEscalation'], DEFAULTS.autoEscalation),
     showDecision: bool(o['showDecision'], DEFAULTS.showDecision),
     aiClassification: pick(o['aiClassification'], AI_MODES, 'off'),
+    showStatusLine: bool(o['showStatusLine'], DEFAULTS.showStatusLine),
+    rules: text(o['rules']),
+    learnFromOverrides: bool(o['learnFromOverrides'], DEFAULTS.learnFromOverrides),
+    projectProfiles: text(o['projectProfiles']),
   }
 }
 

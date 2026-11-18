@@ -31,7 +31,7 @@ import {
   toView,
   type Stats,
 } from './lib/format'
-import { isLevel, label, type Level } from './lib/levels'
+import { isLevel, label, LEVELS, type Level } from './lib/levels'
 import { decide, escalate, type Decision, type Previous } from './lib/policy'
 import {
   AI_MODES,
@@ -46,7 +46,9 @@ import {
   type Field,
   type Settings,
 } from './lib/settings'
-import { ESCALATION_TOOL, PANE_ID, STATS_KEY } from './state'
+import { ESCALATION_TOOL, LEARN_KEY, PANE_ID, STATS_KEY, USAGE_KEY } from './state'
+import { applyRules, parseProfiles, parseRules, profileForFolder, type ProjectProfile, type RuleEffect } from './lib/rules'
+import { learnedShift, readLearned, readUsage, recordCorrection, recordUsage, usageSummary } from './lib/learning'
 
 const current = atom({ plugin: 'reasoning-controller', key: 'current' } as const, null, { shape: 'decision-1' })
 const pending = atom({ plugin: 'reasoning-controller', key: 'pending' } as const, null)
@@ -75,14 +77,38 @@ const PANE_ROWS: readonly PaneRow[] = [
   { field: 'aiClassification', title: 'AI classification (small model)', options: AI_MODES, labelOf: o => o },
 ]
 
-const PANE_TOGGLES: readonly { field: 'autoEscalation' | 'showDecision'; title: string }[] = [
+type ToggleField = 'autoEscalation' | 'showDecision' | 'showStatusLine' | 'learnFromOverrides'
+
+const PANE_TOGGLES: readonly { field: ToggleField; title: string }[] = [
   { field: 'autoEscalation', title: 'Automatic escalation' },
   { field: 'showDecision', title: 'Show decision' },
+  { field: 'showStatusLine', title: 'Show the status line' },
+  { field: 'learnFromOverrides', title: 'Learn from my overrides' },
 ]
+
+/** Colour per level on the status line: cool to hot, by theme key. */
+const HEAT: Record<Level, 'suggestion' | 'success' | 'warning' | 'claude' | 'error'> = {
+  low: 'suggestion',
+  medium: 'success',
+  high: 'warning',
+  xhigh: 'claude',
+  max: 'error',
+}
+
+/** A click on the level picks the next task's level: auto, low … max, auto. */
+function nextPending(p: Level | null): Level | null {
+  if (p === null) return 'low'
+  const i = LEVELS.indexOf(p)
+  return i === LEVELS.length - 1 ? null : (LEVELS[i + 1] ?? null)
+}
 
 function valueOf(s: Settings, field: Field): string | boolean {
   if (field === 'manualLevel') return s.manualLevel ?? 'session'
   return s[field]
+}
+
+function isToggle(field: string | undefined): field is ToggleField {
+  return PANE_TOGGLES.some(t => t.field === field)
 }
 
 /** The pane's buttons are answered by the ui.press hook, which takes every press; this is never reached. */
@@ -91,7 +117,7 @@ const handledByPressHook = (): void => undefined
 /** A pane button's key as the field and value it sets; undefined for none. */
 function pressedSetting(element: string, s: Settings): { field: Field; value: string | boolean } | undefined {
   const [field, value] = element.split(':')
-  if (field === 'autoEscalation' || field === 'showDecision') {
+  if (isToggle(field)) {
     return value === 'toggle' ? { field, value: !s[field] } : undefined
   }
   const row = PANE_ROWS.find(r => r.field === field)
@@ -116,6 +142,8 @@ type TurnInfo = {
   escalatedTo?: Level
   toolErrors: number
   modelRequests: number
+  /** What your own rules say about this prompt (no prompt text kept). */
+  ruleEffect?: RuleEffect
 }
 
 /** What the hooks of one load share (module memory; reset by a reload). */
@@ -124,6 +152,8 @@ type Runtime = {
   turns: Map<string, TurnInfo>
   mainTurnId?: string
   previous?: Previous
+  /** The project profile in force for this session's folder. */
+  profile?: ProjectProfile
   /** The step this mod is rewriting right now: the level it sent, the engine's. */
   injection?: { model: string; injected: Level; engine: string }
 }
@@ -142,6 +172,7 @@ const AI_TO_LEVEL: Record<(typeof AI_LABELS)[number], Level> = {
 export const register: Register = (on, options) => {
   const settings = parseSettings(options)
   const rt: Runtime = { settings, turns: new Map() }
+  const { rules, invalid: invalidRules } = parseRules(settings.rules)
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -163,6 +194,18 @@ export const register: Register = (on, options) => {
         isDeferred: false,
       })
     }
+    // A project profile replaces min/max for this session's folder.
+    const { profiles } = parseProfiles(settings.projectProfiles)
+    if (profiles.length > 0) {
+      const cwd = await sessionFolder($)
+      const profile = profileForFolder(cwd, profiles)
+      if (profile) {
+        rt.profile = profile
+        if (profile.max) settings.maxLevel = profile.max
+        if (profile.min) settings.minLevel = profile.min
+        if (LEVELS.indexOf(settings.minLevel) > LEVELS.indexOf(settings.maxLevel)) settings.minLevel = settings.maxLevel
+      }
+    }
     return next(e)
   })
 
@@ -171,6 +214,10 @@ export const register: Register = (on, options) => {
     if (e.agentId !== undefined) return next(e)
     const analysis = analyze(e.text)
     const info: TurnInfo = { analysis, toolErrors: 0, modelRequests: 0 }
+    if (rules.length > 0) {
+      const effect = applyRules(e.text, rules)
+      if (effect.notes.length > 0) info.ruleEffect = effect
+    }
     if (e.text.trim() !== '') {
       const p = await read($, pending)
       if (p !== null) {
@@ -205,16 +252,25 @@ export const register: Register = (on, options) => {
       if (rt.previous === undefined) rt.previous = await previousFromState($)
       const previous = rt.previous
       const override = keys ?? info.override
-      const decided = decide({
+      const learned = settings.learnFromOverrides ? readLearned(await $.store.get(LEARN_KEY)) : undefined
+      const shift = learned ? learnedShift(learned, info.analysis.category) : 0
+      const inputs = {
         analysis: info.analysis,
         settings,
         model: e.model,
         baseline: isLevel(e.effort) ? e.effort : undefined,
-        ...(override ? { override } : {}),
         ...(previous ? { previous } : {}),
         messageCount: e.messageCount,
         ...(aiHint ? { aiHint } : {}),
-      })
+        ...(shift !== 0 ? { learnedShift: shift } : {}),
+        ...(info.ruleEffect ? { ruleEffect: info.ruleEffect } : {}),
+      }
+      const decided = decide({ ...inputs, ...(override ? { override } : {}) })
+      // Learn from a /reasoning override: how far it was from the automatic choice.
+      if (learned && keys === undefined && decided.source === 'override' && decided.level && !info.analysis.isContinuation) {
+        const auto = decide(inputs)
+        if (auto.level) await saveLearned($, recordCorrection(learned, info.analysis.category, auto.level, decided.level))
+      }
       const decision: Decision =
         keys !== undefined && decided.source === 'override'
           ? {
@@ -258,6 +314,11 @@ export const register: Register = (on, options) => {
 
   on('turn.complete', async ($, e, next) => {
     if (e.agentId === undefined) {
+      // Cost overview: output tokens per level, counts only.
+      const done = rt.turns.get(e.turnId)
+      const ranAt = done?.escalatedTo ?? done?.decision?.level
+      const out = e.usage?.output_tokens
+      if (done?.decision && done.decision.source !== 'keys' && ranAt && typeof out === 'number') await bumpUsage($, ranAt, out)
       rt.turns.delete(e.turnId)
       if (rt.mainTurnId === e.turnId) delete rt.mainTurnId
     }
@@ -295,7 +356,21 @@ export const register: Register = (on, options) => {
         return { text: HELP }
       case 'status': {
         const stats = readStats(await $.store.get(STATS_KEY))
-        return { text: statusText(await read($, current), settings, await read($, pending), stats) }
+        const extra: string[] = []
+        if (rt.profile) {
+          extra.push(`Project profile "${rt.profile.match}": ${[rt.profile.min ? 'min ' + label(rt.profile.min) : '', rt.profile.max ? 'max ' + label(rt.profile.max) : ''].filter(Boolean).join(', ')}`)
+        }
+        if (rules.length > 0) extra.push(`Rules: ${rules.map(r => r.text + r.op + label(r.level)).join('; ')}`)
+        if (invalidRules.length > 0) extra.push(`Ignored rules (format "text=level", "text>=level", "text<=level"): ${invalidRules.join('; ')}`)
+        const learnedNow = readLearned(await $.store.get(LEARN_KEY))
+        const adjusted = Object.keys(learnedNow.byCategory).flatMap(c => {
+          const s = learnedShift(learnedNow, c as Analysis['category'])
+          return s !== 0 ? [`${c} ${s > 0 ? '+1' : '-1'}`] : []
+        })
+        if (settings.learnFromOverrides && adjusted.length > 0) extra.push(`Learned from your overrides: ${adjusted.join(', ')}`)
+        extra.push(...usageSummary(readUsage(await $.store.get(USAGE_KEY))))
+        const base = statusText(await read($, current), settings, await read($, pending), stats)
+        return { text: [base, ...extra].join('\n') }
       }
       case 'clear':
         await update($, pending, () => null)
@@ -336,6 +411,12 @@ export const register: Register = (on, options) => {
           case 'aiClassification':
             r = await $.config.set({ key: 'reasoning-controller.aiClassification', value: value })
             break
+          case 'showStatusLine':
+            r = await $.config.set({ key: 'reasoning-controller.showStatusLine', value: value })
+            break
+          case 'learnFromOverrides':
+            r = await $.config.set({ key: 'reasoning-controller.learnFromOverrides', value: value })
+            break
         }
         const shown = typeof value === 'boolean' ? (value ? 'on' : 'off') : value
         return { text: r.deny ? `Not changed: ${r.deny}` : `${action.field} = ${shown} (saved).` }
@@ -346,7 +427,11 @@ export const register: Register = (on, options) => {
       }
       case 'reset-stats':
         await $.store.delete(STATS_KEY)
-        return { text: 'Statistics cleared.' }
+        await $.store.delete(USAGE_KEY)
+        return { text: 'Statistics and token counts cleared.' }
+      case 'reset-learning':
+        await $.store.delete(LEARN_KEY)
+        return { text: 'Forgot what was learned from your overrides.' }
       case 'error':
         return { text: action.message }
     }
@@ -354,16 +439,27 @@ export const register: Register = (on, options) => {
 
   // ---- the line above the prompt: mode, current level, limits ----
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey) return next(e)
+    if (e.props.hasSurvey || !settings.showStatusLine) return next(e)
     const v = await read($, current)
     const p = await read($, pending)
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
     const parts = bandParts(v, settings, p)
     const nextLevel = p !== null ? ` | Next · ${p.toUpperCase()}` : ''
+    const shown = v?.level ?? v?.baseline
+    // Same words as before; the mode opens the settings, the level picks the
+    // next task's level (a press reaches the ui.press hook below).
     return (
       <Box>
-        <Text dimColor>Reasoning · {parts.mode} | Currently · </Text>
-        <Text bold>{parts.level}</Text>
+        <Button key="band-mode" plain onPress={handledByPressHook}>
+          <Text dimColor>Reasoning · </Text>
+          <Text bold>{parts.mode}</Text>
+        </Button>
+        <Text dimColor> | Currently · </Text>
+        <Button key="band-level" plain onPress={handledByPressHook}>
+          <Text bold {...(shown && v?.source !== 'unsupported' ? { color: HEAT[shown] } : {})}>
+            {parts.level}
+          </Text>
+        </Button>
         <Text dimColor>
           {nextLevel} | {parts.limit}
         </Text>
@@ -408,6 +504,13 @@ export const register: Register = (on, options) => {
     )
   })
 
+  // ---- a click on the status line ----
+  on('ui.press', { plugin: 'reasoning-controller', component: 'AbovePrompt' }, async ($, e) => {
+    if (e.element === 'band-level') await update($, pending, p => nextPending(p))
+    if (e.element === 'band-mode') await $.ui.open({ id: PANE_ID, title: 'Reasoning settings', focus: true, closeOnEscape: true })
+    return { element: e.element }
+  })
+
   // ---- a press in the settings pane: write this mod's own /config row ----
   on('ui.press', { plugin: 'reasoning-controller', requestId: 'reasoning-settings' }, async ($, e) => {
     if (e.element === 'close') {
@@ -441,6 +544,16 @@ export const register: Register = (on, options) => {
         break
       case 'aiClassification':
         await $.config.set({ key: 'reasoning-controller.aiClassification', value: value })
+        break
+      case 'showStatusLine':
+        await $.config.set({ key: 'reasoning-controller.showStatusLine', value: value })
+        break
+      case 'learnFromOverrides':
+        await $.config.set({ key: 'reasoning-controller.learnFromOverrides', value: value })
+        break
+      case 'rules':
+      case 'projectProfiles':
+        // Text settings: edited in /config, not in the pane.
         break
     }
     return { element: e.element }
@@ -482,6 +595,30 @@ async function keysChoice($: EngineInterface, model: string): Promise<Level | un
     return value != null && value.model === model && isLevel(value.level) ? value.level : undefined
   } catch {
     return undefined
+  }
+}
+
+async function sessionFolder($: EngineInterface): Promise<string> {
+  try {
+    return await $.session.cwd()
+  } catch {
+    return ''
+  }
+}
+
+async function saveLearned($: EngineInterface, learned: ReturnType<typeof readLearned>): Promise<void> {
+  try {
+    await $.store.set(LEARN_KEY, learned)
+  } catch {
+    // Learning is a convenience; a store failure must not touch the turn.
+  }
+}
+
+async function bumpUsage($: EngineInterface, level: Level, outputTokens: number): Promise<void> {
+  try {
+    await $.store.set(USAGE_KEY, recordUsage(readUsage(await $.store.get(USAGE_KEY)), level, outputTokens))
+  } catch {
+    // The cost overview is a convenience; a store failure must not touch the turn.
   }
 }
 

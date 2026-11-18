@@ -11,6 +11,8 @@ Issues and pull requests are welcome.
 | `hooks/lib/policy.ts` | Selection strategy (pure) |
 | `hooks/lib/models.ts` | Effort levels per model family: add new models here |
 | `hooks/lib/settings.ts` | `userConfig` parsing |
+| `hooks/lib/rules.ts` | Your own rules and project profiles (pure) |
+| `hooks/lib/learning.ts` | Learning from overrides and the cost overview (pure) |
 | `hooks/lib/format.ts` | User-facing text and the `/reasoning` parser |
 | `hooks/register.tsx` | Hook wiring (`turn.start`, `turn.step`, `tool.call`, …), status line and settings pane |
 | `types/index.d.ts` | `$.state` contract |
