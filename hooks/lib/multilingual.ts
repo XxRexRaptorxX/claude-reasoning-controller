@@ -33,6 +33,10 @@ export const MULTI_CATEGORY: Partial<Record<Category, RegExp>> = {
     'renombra\\w*|cambia el nombre|renomme\\w*|renomeie|renomear|rinomina\\w*|hernoem\\w*|zmien nazwe|error tipografico|faute de frappe|errore di battitura|literowk\\w*',
     'переименуй|переименовать|опечатк|重命名|改名|错别字|拼写错误|名前を変更|名前を変え|リネーム|誤字|タイポ|이름을? 바꿔|이름 변경|오타',
   ),
+  routine: L(
+    'commit\\w*|push\\w*|pull|haz commit|fais un commit|faca commit|ejecuta (las |los )?(pruebas|tests)|lance (les )?tests|execute (os )?testes|esegui (i )?test|voer (de )?tests uit|uruchom testy|instala (las )?dependencias|installe (les )?dependances|instale (as )?dependencias|installa (le )?dipendenze|installeer (de )?afhankelijkheden|zainstaluj zaleznosci|compila (el |o |il )?(proyecto|projeto|progetto)|compile le projet',
+    'коммит|закоммит|запуш|пушни|запусти тесты|установи зависимости|собери проект|提交|推送|拉取|运行测试|安装依赖|构建项目|コミット|プッシュ|プル|テストを実行|依存関係をインストール|ビルドして|커밋|푸시|테스트 실행|의존성 설치|빌드해',
+  ),
   content: L(
     'lista|listas|liste|listes|elenco|lijst|resume|resumen|resumo|resuma|resumir|riassumi|riassunto|samenvatting|vat samen|podsumuj|traduce|traduis|traduza|traduci|vertaal|przetlumacz|ideas|idees|ideias|idee|ideeen|pomysly|borrador|brouillon|rascunho|bozza|lluvia de ideas',
     'список|кратко|резюме|переведи|идеи|列表|清单|总结|摘要|翻译|头脑风暴|リスト|一覧|要約|翻訳|アイデア|目록|목록|리스트|요약|번역|아이디어',

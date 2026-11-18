@@ -13,6 +13,10 @@ export const MAX_CHOICES = ['medium', 'high', 'xhigh', 'max'] as const
 export const MIN_CHOICES = ['low', 'medium', 'high'] as const
 export const MANUAL_CHOICES = ['session', 'low', 'medium', 'high', 'xhigh', 'max'] as const
 
+/** When the small model is asked for the level: never, for unclear tasks, for every task. */
+export const AI_MODES = ['off', 'unclear', 'always'] as const
+export type AiMode = (typeof AI_MODES)[number]
+
 export type Settings = {
   mode: Mode
   maxLevel: Level
@@ -22,7 +26,7 @@ export type Settings = {
   manualLevel: Level | undefined
   autoEscalation: boolean
   showDecision: boolean
-  aiClassifier: boolean
+  aiClassification: AiMode
 }
 
 export const DEFAULTS: Settings = {
@@ -33,7 +37,7 @@ export const DEFAULTS: Settings = {
   manualLevel: undefined,
   autoEscalation: true,
   showDecision: true,
-  aiClassifier: false,
+  aiClassification: 'off',
 }
 
 /** The config field names, as `/config` and `$.config.set` key them. */
@@ -45,7 +49,7 @@ export const FIELDS = [
   'manualLevel',
   'autoEscalation',
   'showDecision',
-  'aiClassifier',
+  'aiClassification',
 ] as const
 export type Field = (typeof FIELDS)[number]
 
@@ -72,7 +76,7 @@ export function parseSettings(options: Readonly<Record<string, unknown>> | undef
     manualLevel: isLevel(manual) ? manual : undefined,
     autoEscalation: bool(o['autoEscalation'], DEFAULTS.autoEscalation),
     showDecision: bool(o['showDecision'], DEFAULTS.showDecision),
-    aiClassifier: bool(o['aiClassifier'], DEFAULTS.aiClassifier),
+    aiClassification: pick(o['aiClassification'], AI_MODES, 'off'),
   }
 }
 

@@ -287,3 +287,44 @@ for (const [language, [question, rename, hardBug]] of Object.entries(SPOT_CHECKS
     test(`hard bug is HIGH or above: ${hardBug}`, () => expect(['high', 'xhigh', 'max']).toContain(levelFor(hardBug)))
   })
 }
+
+describe('routine operations stay LOW even when the session runs at HIGH', () => {
+  const ROUTINE = [
+    'commit und push aller commits',
+    'Commit and push all changes',
+    'git push',
+    'git status',
+    'Führe die Tests aus',
+    'Run the tests',
+    'npm install',
+    'Baue das Projekt',
+    'Build the project',
+    'Installiere die Abhängigkeiten',
+    'Zeig mir das Log',
+    'Haz commit y push de todo',
+    'コミットしてプッシュして',
+    '提交并推送所有更改',
+    'Закоммить и запушь все изменения',
+  ]
+  for (const prompt of ROUTINE) {
+    test(prompt, () => {
+      expect(levelFor(prompt, DEFAULTS, MODEL, 'high')).toBe('low')
+      expect(analyze(prompt).category).toBe('routine')
+    })
+  }
+})
+
+describe('routine words do not hide real work', () => {
+  test('fixing a failing test before committing is not LOW', () => {
+    expect(levelFor('Fix the failing login test and then commit', DEFAULTS, MODEL, 'high')).not.toBe('low')
+  })
+  test('resolving merge conflicts is not LOW', () => {
+    expect(levelFor('Löse die Merge-Konflikte im Branch feature/login', DEFAULTS, MODEL, 'high')).not.toBe('low')
+  })
+  test('implementing push notifications is a feature, not a git push', () => {
+    expect(analyze('Implement push notifications for the mobile app').category).toBe('implement')
+  })
+  test('the German word "Tag" (day) is not a git tag', () => {
+    expect(analyze('Was ist heute für ein Tag?').category).toBe('question')
+  })
+})

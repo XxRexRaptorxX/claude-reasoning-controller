@@ -191,3 +191,45 @@ describe('automatic escalation', () => {
     expect(escalate(d, DEFAULTS)).toBeUndefined()
   })
 })
+
+describe('AI classification modes', () => {
+  test('always: the small model decides even when the local analysis is sure', () => {
+    const d = decide({
+      analysis: analyze(HARD_DEBUG),
+      settings: parseSettings({ aiClassification: 'always' }),
+      model: 'claude-opus-5-5',
+      baseline: 'medium',
+      aiHint: 'medium',
+    })
+    expect(d.level).toBe('medium')
+    expect(d.notes.join(' ')).toContain('AI classification')
+  })
+
+  test('unclear: a confident local analysis wins over the small model', () => {
+    const d = decide({
+      analysis: analyze(HARD_DEBUG),
+      settings: parseSettings({ aiClassification: 'unclear' }),
+      model: 'claude-opus-5-5',
+      baseline: 'medium',
+      aiHint: 'low',
+    })
+    expect(d.level).toBe('high')
+  })
+
+  test('always: the small model is still held to the limits', () => {
+    const d = decide({
+      analysis: analyze(QUESTION),
+      settings: parseSettings({ aiClassification: 'always', maxLevel: 'high' }),
+      model: 'claude-opus-5-5',
+      baseline: 'medium',
+      aiHint: 'max',
+    })
+    expect(d.level).toBe('high')
+  })
+
+  test('the command takes off, unclear and always', () => {
+    expect(parseCommand('ai always')).toEqual({ kind: 'choice', field: 'aiClassification', value: 'always' })
+    expect(parseCommand('ai unclear')).toEqual({ kind: 'choice', field: 'aiClassification', value: 'unclear' })
+    expect(parseCommand('ai sometimes').kind).toBe('error')
+  })
+})

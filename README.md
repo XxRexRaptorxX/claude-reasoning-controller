@@ -35,10 +35,11 @@ In the desktop app, where `/plugin` does not run: click **+** next to the prompt
 
 Claude Code raises the `turn.step` event before every model request, with the `effort` that request would carry. The mod answers `next({ ...e, effort })`, which changes the request's real effort parameter. It never changes the prompt.
 
-1. **Local task analysis (no extra model call):** each task is scored 0–3 on seven dimensions: complexity, scope, error-proneness, correctness demand, autonomy, ambiguity and verification effort. The task type gives base values; the wording and the structure of the prompt (file references, numbered steps, stack traces) adjust them. Single keywords never decide on their own. Scope only counts in proportion to how hard the work is, so a long but simple list stays `low` while a short but hard proof gets at least `high`. It understands prompts in **12 languages**: English, German, Spanish, French, Portuguese, Italian, Dutch, Polish, Russian, Chinese, Japanese and Korean. In any other language, the language-neutral signals still count (code blocks, stack traces, file references, numbered steps, length), an unclear prompt keeps the session level, and the optional AI classification (`/reasoning ai on`) works for every language.
-2. **Selection strategy:** it starts from the session's own level (`/effort` or the model default). It lowers that level only for clearly simple tasks and uses `xhigh`/`max` only with structural justification. Close calls keep the previous level (hysteresis). Long conversations are not stepped down by a single level, to protect the prompt cache. Follow-ups such as "ok, continue" keep the current level.
-3. **Model-aware:** it knows which levels each model family takes and picks the nearest supported level. For example, `xhigh` becomes `high` on Opus 4.6. Models without effort support are left untouched.
-4. **Escalation (optional):** after three failed tool calls in one task, or when Claude calls the `request_more_reasoning` tool, the rest of the task runs one level higher, within your maximum.
+1. **Local task analysis (no extra model call):** each task is scored 0–3 on seven dimensions: complexity, scope, error-proneness, correctness demand, autonomy, ambiguity and verification effort. The task type gives base values; the wording and the structure of the prompt (file references, numbered steps, stack traces) adjust them. Single keywords never decide on their own. Scope only counts in proportion to how hard the work is, so a long but simple list stays `low` while a short but hard proof gets at least `high`. Routine operations (git commit/push, running tests, building, installing dependencies, showing a file or log) are recognised as such and run at `low`, unless the prompt also asks for real work such as fixing a bug. It understands prompts in **12 languages**: English, German, Spanish, French, Portuguese, Italian, Dutch, Polish, Russian, Chinese, Japanese and Korean. In any other language, the language-neutral signals still count (code blocks, stack traces, file references, numbered steps, length), an unclear prompt keeps the session level, and the optional AI classification works for every language.
+2. **Optional AI classification:** `/reasoning ai unclear` asks Claude Code's small, fast model for the level when the local analysis is unsure; `/reasoning ai always` lets it decide for every new task. It costs one short request and a little latency per task it is asked for; your limits, mode and the stability rules still apply, and if the request fails the local analysis decides. Off by default.
+3. **Selection strategy:** it starts from the session's own level (`/effort` or the model default). It lowers that level only for clearly simple tasks and uses `xhigh`/`max` only with structural justification. Close calls keep the previous level (hysteresis). Long conversations are not stepped down by a single level, to protect the prompt cache. Follow-ups such as "ok, continue" keep the current level.
+4. **Model-aware:** it knows which levels each model family takes and picks the nearest supported level. For example, `xhigh` becomes `high` on Opus 4.6. Models without effort support are left untouched.
+5. **Escalation (optional):** after three failed tool calls in one task, or when Claude calls the `request_more_reasoning` tool, the rest of the task runs one level higher, within your maximum.
 
 ## Usage
 
@@ -52,7 +53,8 @@ Claude Code raises the `turn.step` event before every model request, with the `e
 | `/reasoning min-level low\|medium\|high` | Lower limit |
 | `/reasoning priority efficiency\|balanced\|quality` | Cost/time priority |
 | `/reasoning manual session\|low…max` | Level in MANUAL mode (`session` = leave `/effort` alone) |
-| `/reasoning escalation on\|off` · `display on\|off` · `ai on\|off` | Toggles |
+| `/reasoning ai off|unclear|always` | AI classification by the small model: never, when unclear, for every task |
+| `/reasoning escalation on|off` · `display on|off` | Toggles |\|off` · `display on\|off` · `ai on\|off` | Toggles |
 | `/reasoning settings` | Settings pane |
 
 All settings are stored in `settings.json` (under `pluginConfigs`) and appear as rows in `/config`.
@@ -65,7 +67,7 @@ All settings are stored in `settings.json` (under `pluginConfigs`) and appear as
 | Cost/time priority | Balanced |
 | Automatic escalation | on |
 | Show decision before each task | on |
-| AI classification (small model, only for unclear prompts) | off |
+| AI classification (small model): off, unclear, always | off |
 
 ## Works with effort-cycle
 
@@ -82,7 +84,7 @@ When [effort-cycle](https://github.com/Anerco/claude-code-effort-cycle) is insta
 ## Privacy
 
 - **No prompt text is stored.** Session state holds only task traits. The persistent store holds counts only (levels, escalations, overrides).
-- No extra model calls unless you enable the optional AI classification. That sends the first 4,000 characters of an unclear prompt to Claude Code's small, fast model.
+- No extra model calls unless you enable the optional AI classification. It then sends the first 4,000 characters of the prompt (only unclear ones with `unclear`, every new task with `always`) to Claude Code's own small, fast model.
 - The only thing the model sees from this mod is the short description of the escalation tool, and only while escalation is enabled.
 - The mod reads no credentials and no environment variables, and it makes no network requests of its own.
 
@@ -114,7 +116,7 @@ The mod adds one tool, `request_more_reasoning` (listed as `mcp__reasoning-contr
 | Hook | What it does |
 |---|---|
 | `session.start` | Registers the `/reasoning` command and, if escalation is on, the `request_more_reasoning` tool. |
-| `turn.start` (main conversation only) | Analyses the new task locally and takes a pending `/reasoning <level>` override. Optionally asks the small model when the task is unclear (AI classification, off by default). |
+| `turn.start` (main conversation only) | Analyses the new task locally and takes a pending `/reasoning <level>` override. Optionally asks the small model for the level: for unclear tasks or for every task (AI classification, off by default). |
 | `turn.step` (main conversation only) | Decides the level on the turn's first request, then sends **every request of the turn** with that `effort` (`next({ ...e, effort })`). Subagent requests, models without effort and an active effort-cycle pick pass through unchanged. |
 | `turn.complete` | Forgets the finished turn's in-memory data. |
 | `tool.call` (all tools) | Observes results only: three failed calls in one task raise the effort (escalation). It always returns what the tool returned. |
@@ -136,7 +138,7 @@ claude plugin validate .
 claude plugin test .
 ```
 
-The 126 tests in `tests/` cover:
+The 152 tests in `tests/` cover:
 
 - the reference tasks (in English, German, Spanish, French, Russian, Chinese and Japanese, plus spot checks in Portuguese, Italian, Dutch, Polish and Korean),
 - keyword robustness,

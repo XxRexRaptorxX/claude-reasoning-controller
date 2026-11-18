@@ -1,6 +1,6 @@
 {
   "name": "reasoning-controller",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Adaptive Reasoning Controller: picks the right effort level (low to max) for every task and actually sends it with each model request via turn.step.",
   "author": { "name": "XxRexRaptorxX", "url": "https://github.com/XxRexRaptorxX" },
   "homepage": "https://github.com/XxRexRaptorxX/claude-reasoning-controller#readme",
@@ -56,11 +56,12 @@
       "description": "Shows the detected task, the level and a short reason in the transcript before each task.",
       "default": true
     },
-    "aiClassifier": {
-      "type": "boolean",
+    "aiClassification": {
+      "type": "string",
       "title": "Reasoning: AI classification",
-      "description": "For unclear tasks, also asks the small, fast model (costs one short request and a little latency).",
-      "default": false
+      "description": "Lets Claude Code's small, fast model choose the level. off = local analysis only; unclear = only when the local analysis is unsure; always = before every new task (one short request and a little latency per task). Limits and modes still apply.",
+      "options": ["off", "unclear", "always"],
+      "default": "off"
     }
   }
 }

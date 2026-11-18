@@ -34,6 +34,7 @@ import {
 import { isLevel, label, type Level } from './lib/levels'
 import { decide, escalate, type Decision, type Previous } from './lib/policy'
 import {
+  AI_MODES,
   MANUAL_CHOICES,
   MAX_CHOICES,
   MIN_CHOICES,
@@ -71,12 +72,12 @@ const PANE_ROWS: readonly PaneRow[] = [
     options: MANUAL_CHOICES,
     labelOf: o => (o === 'session' ? '/effort' : o.toUpperCase()),
   },
+  { field: 'aiClassification', title: 'AI classification (small model)', options: AI_MODES, labelOf: o => o },
 ]
 
-const PANE_TOGGLES: readonly { field: 'autoEscalation' | 'showDecision' | 'aiClassifier'; title: string }[] = [
+const PANE_TOGGLES: readonly { field: 'autoEscalation' | 'showDecision'; title: string }[] = [
   { field: 'autoEscalation', title: 'Automatic escalation' },
   { field: 'showDecision', title: 'Show decision' },
-  { field: 'aiClassifier', title: 'AI classification (small model)' },
 ]
 
 function valueOf(s: Settings, field: Field): string | boolean {
@@ -90,7 +91,7 @@ const handledByPressHook = (): void => undefined
 /** A pane button's key as the field and value it sets; undefined for none. */
 function pressedSetting(element: string, s: Settings): { field: Field; value: string | boolean } | undefined {
   const [field, value] = element.split(':')
-  if (field === 'autoEscalation' || field === 'showDecision' || field === 'aiClassifier') {
+  if (field === 'autoEscalation' || field === 'showDecision') {
     return value === 'toggle' ? { field, value: !s[field] } : undefined
   }
   const row = PANE_ROWS.find(r => r.field === field)
@@ -177,13 +178,15 @@ export const register: Register = (on, options) => {
         await update($, pending, () => null)
       }
     }
+    // The small model decides for every new task ("always"), or only where
+    // the local analysis is unsure ("unclear").
     const wantsAi =
-      settings.aiClassifier &&
+      (settings.aiClassification === 'always' ||
+        (settings.aiClassification === 'unclear' && analysis.confidence < 0.6)) &&
       settings.mode !== 'manual' &&
       info.override === undefined &&
       !analysis.isContinuation &&
-      analysis.confidence < 0.6 &&
-      e.text.trim().length >= 15
+      e.text.trim().length >= 3
     if (wantsAi) info.ai = classifyWithModel($, e.text)
     rt.turns.set(e.turnId, info)
     rt.mainTurnId = e.turnId
@@ -330,8 +333,8 @@ export const register: Register = (on, options) => {
           case 'showDecision':
             r = await $.config.set({ key: 'reasoning-controller.showDecision', value: value })
             break
-          case 'aiClassifier':
-            r = await $.config.set({ key: 'reasoning-controller.aiClassifier', value: value })
+          case 'aiClassification':
+            r = await $.config.set({ key: 'reasoning-controller.aiClassification', value: value })
             break
         }
         const shown = typeof value === 'boolean' ? (value ? 'on' : 'off') : value
@@ -436,8 +439,8 @@ export const register: Register = (on, options) => {
       case 'showDecision':
         await $.config.set({ key: 'reasoning-controller.showDecision', value: value })
         break
-      case 'aiClassifier':
-        await $.config.set({ key: 'reasoning-controller.aiClassifier', value: value })
+      case 'aiClassification':
+        await $.config.set({ key: 'reasoning-controller.aiClassification', value: value })
         break
     }
     return { element: e.element }
@@ -499,9 +502,11 @@ async function bumpStats($: EngineInterface, fn: (s: Stats) => Stats): Promise<v
 async function classifyWithModel($: EngineInterface, text: string): Promise<Level | undefined> {
   try {
     const prompt =
-      'Effort a coding assistant needs for this request (trivial = quick answer or tiny edit; routine = ordinary change; ' +
-      'demanding = tricky debugging or careful analysis; extensive = large multi-file/autonomous work; critical = ' +
-      'very hard problem where correctness is critical).\n\n' +
+      'How much reasoning effort a coding assistant needs for this request. trivial = a quick answer, a tiny edit or a ' +
+      'routine operation (git commit/push, running tests, installing, building); routine = an ordinary, well-scoped code ' +
+      'change; demanding = tricky debugging, side effects or careful analysis; extensive = large multi-file or autonomous ' +
+      'work, architecture; critical = a very hard problem where correctness is critical (security, proofs). Judge the ' +
+      'actual difficulty, not the length or single words. The request may be in any language.\n\n' +
       text.slice(0, 4000)
     const labelled = await $.model.classify(prompt, AI_LABELS)
     return labelled === undefined ? undefined : AI_TO_LEVEL[labelled as (typeof AI_LABELS)[number]]

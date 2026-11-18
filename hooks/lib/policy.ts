@@ -150,7 +150,7 @@ export function decide(input: DecideInput): Decision {
   let source: DecisionSource = 'auto'
   const reasons = [...analysis.traits]
 
-  if (input.aiHint !== undefined && analysis.confidence < 0.6) {
+  if (input.aiHint !== undefined && (settings.aiClassification === 'always' || analysis.confidence < 0.6)) {
     requested = input.aiHint
     notes.push(`AI classification: ${label(input.aiHint)}`)
   } else if (analysis.confidence < 0.5) {

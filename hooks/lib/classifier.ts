@@ -21,6 +21,7 @@ export type Category =
   | 'greeting'
   | 'question'
   | 'trivial_edit'
+  | 'routine'
   | 'content'
   | 'implement'
   | 'modify'
@@ -89,6 +90,15 @@ const CATEGORIES: readonly CategoryDef[] = [
     trivial: true,
   },
   {
+    // Everyday operations: version control, running, building, installing,
+    // showing. Claude does them with tools; they need little reasoning.
+    id: 'routine',
+    test: /\b(git( \w+)?|commit\w*|committe\w*|push\w*|pull\w*|fetch\w*|checkout|stash\w*|cherry-pick|(neuen? |new )?branch( erstellen| anlegen)?|(fuehre?|lass|starte?|run|execute|start)\w* (\w+ ){0,3}(tests?|build|linter|lint|server|app|skript|script|befehl|command|formatter)( aus)?|(baue|build|kompilier\w*|compile) (\w+ )?(das |the )?(projekt|project|app|code)|install\w* (\w+ )?(abhaengigkeiten|dependencies|pakete|packages|deps)|(npm|yarn|pnpm|bun) (i|install|run|test|build|ci)|pip install|(gradle|mvn|maven|cargo|go) (build|test|run|install)|(oeffne|zeig\w*|show|open|lies|read|display|print)\w* (\w+ ){0,3}(datei|file|log|logs|status|diff|inhalt|content))\b/,
+    base: ZERO,
+    label: 'Routine operation',
+    trivial: true,
+  },
+  {
     id: 'content',
     test: /\b(liste\w*|auflist\w*|lists?|brainstorm\w*|ideen|ideas|vorschlaege|suggestions|entwurf|entwirf|draft|zusammenfass\w*|summar\w*|uebersetz\w*|translate|formulier\w*|(schreib\w*|verfass\w*) (einen|eine|ein) (kurzen? |kleinen? )?(text|e-?mail|mail|brief|beitrag|post|artikel|gedicht|slogan)|write (a|an) (short )?(email|text|post|article|poem|slogan))\b/,
     base: ZERO,
@@ -97,7 +107,7 @@ const CATEGORIES: readonly CategoryDef[] = [
   },
   {
     id: 'implement',
-    test: /\b(implementier(e|en|t)?|implement|fuege? .{0,40}\bhinzu|hinzufueg\w*|add (a|an|the|support|new)\b|(erstell|bau|programmier|entwickl)\w* (eine?[nmrs]?|die|den|das|neue?[nmrs]?) (\w+ ){0,2}(funktion|methode|klasse|komponente|endpoint|endpunkt|api|modul|feature|seite|formular|skript|script|anwendung|app|plugin|mod|dienst|service)|build (a|an|the)|(schreib\w*) (eine?[nmrs]?) (\w+ ){0,2}(funktion|methode|klasse|skript|script)|write (a|an) (function|class|script|method|component)|create (a|an) (function|class|component|endpoint|app)|neue[nmrs]? (funktion|funktionalitaet|feature)|new feature)\b/,
+    test: /\b(implementier(e|en|t)?|implement|fuege? .{0,40}\bhinzu|hinzufueg\w*|add (a|an|the|support|new)\b|(erstell|bau|programmier|entwickl)\w* (eine?[nmrs]?|die|den|das|neue?[nmrs]?) (\w+ ){0,2}(funktion|methode|klasse|komponente|endpoint|endpunkt|api|modul|feature|seite|formular|skript|script|anwendung|app|plugin|mod|dienst|service)|build (a|an|the) (?!project\b|app\b|code\b)|(schreib\w*) (eine?[nmrs]?) (\w+ ){0,2}(funktion|methode|klasse|skript|script)|write (a|an) (function|class|script|method|component)|create (a|an) (function|class|component|endpoint|app)|neue[nmrs]? (funktion|funktionalitaet|feature)|new feature)\b/,
     base: d(1, 1, 0, 0, 1, 0, 1),
     label: 'Feature implementation',
   },
@@ -121,7 +131,7 @@ const CATEGORIES: readonly CategoryDef[] = [
   },
   {
     id: 'debug',
-    test: /\b(fehler(?!behandlung|meldungstext)\w*|bugs?|bugfix\w*|fix(e|es|ed|ing)?|behebe?n?|beheb\w*|debug\w*|crash\w*|absturz|stuerzt|exception\w*|stack ?trace|traceback|funktioniert (nicht|nicht mehr)|geht nicht|kaputt|broken|doesn'?t work|not working|failing|fails|schlaegt fehl|fehlschlag\w*|(this|the|that|ein|einen|diesen|der) error|haengt|freez\w*)\b/,
+    test: /\b(fehler(?!behandlung|meldungstext)\w*|bugs?|bugfix\w*|fix(e|es|ed|ing)?|behebe?n?|beheb\w*|debug\w*|crash\w*|absturz|stuerzt|exception\w*|stack ?trace|traceback|funktioniert (nicht|nicht mehr)|geht nicht|kaputt|broken|doesn'?t work|not working|failing|fails|schlaegt fehl|fehlschlag\w*|(this|the|that|ein|einen|diesen|der) error|(merge|rebase)[- ]?(konflikt\w*|conflicts?)|konflikte? (loesen|beheben)|resolve (the )?conflicts?|haengt|freez\w*)\b/,
     base: d(2, 0, 1, 1, 1, 2, 2),
     label: 'Debugging',
   },
@@ -276,6 +286,7 @@ export function analyze(text: string): Analysis {
   const named =
     [...substantive].sort((a, b) => total(b.base) - total(a.base))[0] ??
     matched.find(c => c.id === 'trivial_edit') ??
+    matched.find(c => c.id === 'routine') ??
     matched.find(c => c.id === 'content') ??
     matched.find(c => c.id === 'question') ??
     matched[0]
@@ -351,7 +362,7 @@ export function analyze(text: string): Analysis {
   } else {
     confidence = 0.65 + 0.07 * Math.min(4, modifiers)
   }
-  if (words <= 2 && category !== 'greeting' && category !== 'trivial_edit') confidence = Math.min(confidence, 0.4)
+  if (words <= 2 && category !== 'greeting' && category !== 'trivial_edit' && category !== 'routine') confidence = Math.min(confidence, 0.4)
   confidence = Math.min(0.95, confidence)
 
   return {

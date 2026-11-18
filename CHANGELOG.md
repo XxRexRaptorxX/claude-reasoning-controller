@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 – 2026-11-18
+
+- New task type "Routine operation": git commit/push/pull, running tests, building, installing dependencies, showing a file or log run at `low`, in all 12 languages, even when the session runs at `high`. A prompt that also asks for real work (fixing a bug, resolving merge conflicts) is still classified by that work.
+- Short command-like prompts such as `git push` or `npm install` are no longer treated as unclear.
+- AI classification is now a choice: `off`, `unclear` (only when the local analysis is unsure) or `always` (the small model picks the level for every new task). The setting is now called `aiClassification`; a previous `aiClassifier` value is not carried over.
+- The small model's instructions now describe routine operations and say that the request may be in any language.
+- 152 tests.
+
 ## 0.4.0 – 2026-11-17
 
 - Prompt recognition in 12 languages: English, German, Spanish, French, Portuguese, Italian, Dutch, Polish, Russian, Chinese, Japanese and Korean (`hooks/lib/multilingual.ts`).

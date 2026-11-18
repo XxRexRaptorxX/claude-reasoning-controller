@@ -344,3 +344,44 @@ test(
     expect(logs).toContain('stand-in saw high, stored medium')
   },
 )
+
+test('AI classification "always": the small model picks the level for every task', { options: { aiClassification: 'always' } }, async ($, on) => {
+  const sent: Sent[] = []
+  const asked: string[] = []
+  engine(on, sent, [])
+  on('model.classify', (_, e) => {
+    asked.push(String((e as { text?: unknown }).text ?? ''))
+    return { value: 'trivial' }
+  })
+  await startSession($)
+  await $.turn.start({ text: 'Finde und behebe einen schwer reproduzierbaren Fehler in einer bestehenden Codebasis.', turnId: 't1' })
+  await step($, 't1', 0)
+  expect(asked.length).toBe(1)
+  expect(sent.map(s => s.effort)).toEqual(['low'])
+})
+
+test('AI classification "off": the small model is never asked', async ($, on) => {
+  const sent: Sent[] = []
+  let asked = 0
+  engine(on, sent, [])
+  on('model.classify', () => {
+    asked += 1
+    return { value: 'critical' }
+  })
+  await startSession($)
+  await $.turn.start({ text: 'Mach das hier mal bitte schnell.', turnId: 't1' })
+  await step($, 't1', 0)
+  expect(asked).toBe(0)
+})
+
+test('AI classification failing falls back to the local analysis', { options: { aiClassification: 'always' } }, async ($, on) => {
+  const sent: Sent[] = []
+  engine(on, sent, [])
+  on('model.classify', () => {
+    throw new Error('offline')
+  })
+  await startSession($)
+  await $.turn.start({ text: 'Finde und behebe einen schwer reproduzierbaren Fehler in einer bestehenden Codebasis.', turnId: 't1' })
+  await step($, 't1', 0)
+  expect(sent.map(s => s.effort)).toEqual(['high'])
+})
