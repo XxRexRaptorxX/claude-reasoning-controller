@@ -72,7 +72,7 @@ describe('unsupported levels and model families', () => {
     expect(run(SECURITY, {}, 'claude-opus-4-5', 'high').level).toBe('high')
   })
 
-  test('QUALITY FIRST rounds a missing level up within the maximum', () => {
+  test('QUALITY rounds a missing level up within the maximum', () => {
     expect(run(REFACTOR, { mode: 'quality' }, 'claude-opus-4-6', 'high').level).toBe('max')
   })
 
@@ -97,25 +97,29 @@ describe('user profiles', () => {
     expect(run(QUESTION, { minLevel: 'medium' }).level).toBe('medium')
   })
 
-  test('SPEED FIRST stays at HIGH or below', () => {
+  test('SPEED stays at HIGH or below', () => {
     expect(run(SECURITY, { mode: 'speed' }).level).toBe('high')
     expect(run(FEATURE, { mode: 'speed' }).level).toBe('low')
   })
 
-  test('BALANCED never uses MAX', () => {
-    expect(run(SECURITY, { mode: 'balanced' }).level).toBe('xhigh')
+  test('AUTO with max level XHIGH never uses MAX', () => {
+    expect(run(SECURITY, { maxLevel: 'xhigh' }).level).toBe('xhigh')
   })
 
-  test('QUALITY FIRST lifts simple work to at least MEDIUM', () => {
+  test('QUALITY lifts simple work to at least MEDIUM', () => {
     expect(run(QUESTION, { mode: 'quality' }).level).toBe('medium')
     expect(run(HARD_DEBUG, { mode: 'quality' }).level).toBe('xhigh')
   })
 
-  test('the priority slider moves AUTO', () => {
-    expect(run(HARD_DEBUG, { priority: 'efficiency' }).level).toBe('high')
-    expect(run(FEATURE, { priority: 'efficiency' }).level).toBe('low')
-    expect(run(FEATURE, { priority: 'quality' }).level).toBe('high')
-    expect(run(SECURITY, { priority: 'efficiency' }).level).not.toBe('max')
+  test('SPEED and QUALITY move a task by one level', () => {
+    expect(run(HARD_DEBUG, { mode: 'speed' }).level).toBe('high')
+    expect(run(FEATURE, { mode: 'speed' }).level).toBe('low')
+    expect(run(FEATURE, { mode: 'quality' }).level).toBe('high')
+    expect(run(SECURITY, { mode: 'speed' }).level).not.toBe('max')
+  })
+
+  test('an old BALANCED mode or priority value falls back to AUTO', () => {
+    expect(parseSettings({ mode: 'balanced', priority: 'quality' }).mode).toBe('auto')
   })
 
   test('MANUAL with a fixed level ignores the analysis', () => {

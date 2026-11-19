@@ -3,11 +3,9 @@
 
 import { isLevel, rank, type Level } from './levels'
 
-export const MODES = ['auto', 'balanced', 'quality', 'speed', 'manual'] as const
+export const MODES = ['auto', 'speed', 'quality', 'manual'] as const
 export type Mode = (typeof MODES)[number]
 
-export const PRIORITIES = ['efficiency', 'balanced', 'quality'] as const
-export type Priority = (typeof PRIORITIES)[number]
 
 export const MAX_CHOICES = ['medium', 'high', 'xhigh', 'max'] as const
 export const MIN_CHOICES = ['low', 'medium', 'high'] as const
@@ -21,7 +19,6 @@ export type Settings = {
   mode: Mode
   maxLevel: Level
   minLevel: Level
-  priority: Priority
   /** undefined: leave the session's own effort (/effort) untouched. */
   manualLevel: Level | undefined
   autoEscalation: boolean
@@ -41,11 +38,10 @@ export const DEFAULTS: Settings = {
   mode: 'auto',
   maxLevel: 'max',
   minLevel: 'low',
-  priority: 'balanced',
   manualLevel: undefined,
   autoEscalation: true,
   showDecision: true,
-  aiClassification: 'off',
+  aiClassification: 'unclear',
   showStatusLine: true,
   rules: '',
   learnFromOverrides: true,
@@ -57,7 +53,6 @@ export const FIELDS = [
   'mode',
   'maxLevel',
   'minLevel',
-  'priority',
   'manualLevel',
   'autoEscalation',
   'showDecision',
@@ -92,11 +87,10 @@ export function parseSettings(options: Readonly<Record<string, unknown>> | undef
     mode: pick(o['mode'], MODES, 'auto'),
     maxLevel,
     minLevel,
-    priority: pick(o['priority'], PRIORITIES, 'balanced'),
     manualLevel: isLevel(manual) ? manual : undefined,
     autoEscalation: bool(o['autoEscalation'], DEFAULTS.autoEscalation),
     showDecision: bool(o['showDecision'], DEFAULTS.showDecision),
-    aiClassification: pick(o['aiClassification'], AI_MODES, 'off'),
+    aiClassification: pick(o['aiClassification'], AI_MODES, 'unclear'),
     showStatusLine: bool(o['showStatusLine'], DEFAULTS.showStatusLine),
     rules: text(o['rules']),
     learnFromOverrides: bool(o['learnFromOverrides'], DEFAULTS.learnFromOverrides),
@@ -106,14 +100,7 @@ export function parseSettings(options: Readonly<Record<string, unknown>> | undef
 
 export const MODE_LABEL: Record<Mode, string> = {
   auto: 'AUTO',
-  balanced: 'BALANCED',
-  quality: 'QUALITY FIRST',
-  speed: 'SPEED FIRST',
+  quality: 'QUALITY',
+  speed: 'SPEED',
   manual: 'MANUAL',
-}
-
-export const PRIORITY_LABEL: Record<Priority, string> = {
-  efficiency: 'Maximum efficiency',
-  balanced: 'Balanced',
-  quality: 'Maximum quality',
 }

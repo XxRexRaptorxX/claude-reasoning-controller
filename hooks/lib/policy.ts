@@ -63,24 +63,23 @@ export type DecideInput = {
 
 type Profile = { shift: number; cap?: Level; floor?: Level; allowMaxRule: boolean; prefer: 'down' | 'up' }
 
-/** One band of the score scale: the priority slider moves a task by about one level. */
-const PRIORITY_SHIFT = 2
+/** One band of the score scale: SPEED and QUALITY move a task by about one level. */
+const MODE_SHIFT = 2
 
-/** How each working mode turns the analysis into a level. */
+/**
+ * How each working mode turns the analysis into a level.
+ * AUTO: as analysed. SPEED: one level lower, at most HIGH, no MAX.
+ * QUALITY: one level higher, at least MEDIUM, a missing level rounded up.
+ * (MANUAL never gets here.) For "never MAX" in AUTO, set the max level.
+ */
 export function modeProfile(settings: Settings): Profile {
   switch (settings.mode) {
-    case 'balanced':
-      return { shift: 0, cap: 'xhigh', allowMaxRule: false, prefer: 'down' }
     case 'quality':
-      return { shift: PRIORITY_SHIFT, floor: 'medium', allowMaxRule: true, prefer: 'up' }
+      return { shift: MODE_SHIFT, floor: 'medium', allowMaxRule: true, prefer: 'up' }
     case 'speed':
-      return { shift: -PRIORITY_SHIFT, cap: 'high', allowMaxRule: false, prefer: 'down' }
-    default: {
-      // auto: the cost/time priority slider steers it.
-      if (settings.priority === 'efficiency') return { shift: -PRIORITY_SHIFT, allowMaxRule: false, prefer: 'down' }
-      if (settings.priority === 'quality') return { shift: PRIORITY_SHIFT, allowMaxRule: true, prefer: 'up' }
+      return { shift: -MODE_SHIFT, cap: 'high', allowMaxRule: false, prefer: 'down' }
+    default:
       return { shift: 0, allowMaxRule: true, prefer: 'down' }
-    }
   }
 }
 

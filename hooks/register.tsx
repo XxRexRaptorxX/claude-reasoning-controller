@@ -39,8 +39,6 @@ import {
   MIN_CHOICES,
   MODE_LABEL,
   MODES,
-  PRIORITIES,
-  PRIORITY_LABEL,
   parseSettings,
   type Field,
   type Settings,
@@ -61,12 +59,6 @@ const PANE_ROWS: readonly PaneRow[] = [
   { field: 'mode', title: 'Working mode', options: MODES, labelOf: o => MODE_LABEL[o as keyof typeof MODE_LABEL] ?? o },
   { field: 'maxLevel', title: 'Max level', options: MAX_CHOICES, labelOf: o => o.toUpperCase() },
   { field: 'minLevel', title: 'Min level', options: MIN_CHOICES, labelOf: o => o.toUpperCase() },
-  {
-    field: 'priority',
-    title: 'Cost/time priority',
-    options: PRIORITIES,
-    labelOf: o => PRIORITY_LABEL[o as keyof typeof PRIORITY_LABEL] ?? o,
-  },
   {
     field: 'manualLevel',
     title: 'Level in MANUAL mode',
@@ -395,9 +387,6 @@ export const register: Register = (on, options) => {
           case 'minLevel':
             r = await $.config.set({ key: 'reasoning-controller.minLevel', value: value })
             break
-          case 'priority':
-            r = await $.config.set({ key: 'reasoning-controller.priority', value: value })
-            break
           case 'manualLevel':
             r = await $.config.set({ key: 'reasoning-controller.manualLevel', value: value })
             break
@@ -540,9 +529,6 @@ export const register: Register = (on, options) => {
       case 'minLevel':
         await $.config.set({ key: 'reasoning-controller.minLevel', value: value })
         break
-      case 'priority':
-        await $.config.set({ key: 'reasoning-controller.priority', value: value })
-        break
       case 'manualLevel':
         await $.config.set({ key: 'reasoning-controller.manualLevel', value: value })
         break
@@ -613,7 +599,6 @@ type ElementTable = ReturnType<EngineInterface['ui']['resolve']>
 /** An icon per working mode, before its name. */
 const MODE_ICON: Record<Settings['mode'], string> = {
   auto: '◆',
-  balanced: '⚖',
   quality: '★',
   speed: '⚡',
   manual: '✋',
@@ -661,6 +646,13 @@ function statusBar(
   const SEP = '  ·  '
   return (
     <Box>
+      {!clickable && (
+        // Desktop: one small native button before the text opens the settings,
+        // so the text after it keeps its spacing and colours.
+        <Box marginRight={2}>
+          <Button key="band-mode" label="⚙" plain onPress={handledByPressHook} />
+        </Box>
+      )}
       {clickable ? (
         <Button key="band-mode" plain onPress={handledByPressHook}>
           {mode}

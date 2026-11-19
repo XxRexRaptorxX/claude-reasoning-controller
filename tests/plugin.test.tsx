@@ -164,7 +164,7 @@ test('escalation off: failures change nothing', { options: { autoEscalation: fal
   expect(sent.map(s => s.effort)).toEqual(['high', 'high'])
 })
 
-test('stored settings are what the controller uses (max XHIGH, SPEED FIRST)', { options: { maxLevel: 'xhigh' } }, async ($, on) => {
+test('stored settings are what the controller uses (max XHIGH)', { options: { maxLevel: 'xhigh' } }, async ($, on) => {
   const sent: Sent[] = []
   engine(on, sent, [])
   await startSession($)
@@ -373,7 +373,7 @@ test('AI classification "always": the small model picks the level for every task
   expect(sent.map(s => s.effort)).toEqual(['low'])
 })
 
-test('AI classification "off": the small model is never asked', async ($, on) => {
+test('AI classification "off": the small model is never asked', { options: { aiClassification: 'off' } }, async ($, on) => {
   const sent: Sent[] = []
   let asked = 0
   engine(on, sent, [])
@@ -501,6 +501,38 @@ test('each site draws the line only where it is shown: hint line on the terminal
   // On desktop the bar is plain text (no native buttons), coloured like effort-cycle.
   const band = await $.ui.mount({ ...FOOTER, surface: 'desktop' } as never)
   expect((await band.find({ type: 'Text', text: /^◆ $/ }))?.text).toBe('◆ ')
-  expect(await band.find({ type: 'Button' } as never)).toBeUndefined()
+  expect(await band.find({ key: 'band-mode' } as never)).toBeDefined()
   await band.unmount()
+})
+
+test('in the desktop app the ⚙ button before the line opens the settings', async ($, on) => {
+  const opened: string[] = []
+  engine(on, [], [])
+  on('ui.open', (_, e) => {
+    opened.push(String((e as { id?: unknown }).id))
+    return { value: { isPlaced: true } }
+  })
+  await startSession($)
+  const ui = await $.ui.mount({ ...FOOTER, surface: 'desktop' } as never)
+  await ui.press({ key: 'band-mode' })
+  await ui.unmount()
+  expect(opened).toEqual(['reasoning-settings'])
+})
+
+test('by default ("unclear") the small model is asked only for unclear tasks', async ($, on) => {
+  const sent: Sent[] = []
+  let asked = 0
+  engine(on, sent, [])
+  on('model.classify', () => {
+    asked += 1
+    return { value: 'routine' }
+  })
+  await startSession($)
+  await $.turn.start({ text: 'Benenne diese Variable um.', turnId: 't1' })
+  await step($, 't1', 0)
+  expect(asked).toBe(0)
+  await $.turn.start({ text: 'Mach das hier mal bitte schnell.', turnId: 't2' })
+  await step($, 't2', 0)
+  expect(asked).toBe(1)
+  expect(sent.map(s => s.effort)).toEqual(['low', 'medium'])
 })

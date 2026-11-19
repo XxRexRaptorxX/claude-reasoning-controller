@@ -3,7 +3,7 @@
 
 import type { ReasoningDecisionView, ReasoningLevel } from '../../types'
 import { isLevel, label, LEVELS, type Level } from './levels'
-import { AI_MODES, MODE_LABEL, MODES, PRIORITIES, PRIORITY_LABEL, type Mode, type Settings } from './settings'
+import { AI_MODES, MODE_LABEL, MODES, type Mode, type Settings } from './settings'
 import type { Decision } from './policy'
 
 export function toView(turnId: string, d: Decision): ReasoningDecisionView {
@@ -86,7 +86,7 @@ export function truncate(text: string, max: number): string {
 
 export function statusText(v: ReasoningDecisionView | null, s: Settings, pending: ReasoningLevel | null, stats: Stats): string {
   const lines = [
-    `Mode: ${MODE_LABEL[s.mode]} · Priority: ${PRIORITY_LABEL[s.priority]} · Range: ${label(s.minLevel)}–${label(s.maxLevel)}` +
+    `Mode: ${MODE_LABEL[s.mode]} · Range: ${label(s.minLevel)}–${label(s.maxLevel)}` +
       (s.mode === 'manual' ? ` · manual level: ${s.manualLevel ? label(s.manualLevel) : 'session (/effort)'}` : ''),
     `Escalation: ${s.autoEscalation ? 'on' : 'off'} · Show decision: ${s.showDecision ? 'on' : 'off'} · AI classification: ${s.aiClassification}`,
   ]
@@ -103,10 +103,9 @@ export const HELP = [
   '/reasoning                    Show status',
   '/reasoning <level>            Level for the next task (low|medium|high|xhigh|max)',
   '/reasoning auto               Discard the override, choose automatically',
-  '/reasoning mode <mode>        auto|balanced|quality|speed|manual',
+  '/reasoning mode <mode>        auto|speed|quality|manual',
   '/reasoning max-level <level>  medium|high|xhigh|max (upper limit)',
   '/reasoning min-level <level>  low|medium|high (lower limit)',
-  '/reasoning priority <value>   efficiency|balanced|quality',
   '/reasoning manual <level>     session|low|medium|high|xhigh|max (level in manual mode)',
   '/reasoning ai off|unclear|always  Ask the small model for the level: never, when unclear, always',
   '/reasoning escalation on|off · display on|off · statusline on|off · learning on|off',
@@ -163,20 +162,19 @@ export type CommandAction =
   | { kind: 'help' }
   | { kind: 'clear' }
   | { kind: 'override'; level: Level; prompt: string }
-  | { kind: 'choice'; field: 'mode' | 'maxLevel' | 'minLevel' | 'priority' | 'manualLevel' | 'aiClassification'; value: string }
+  | { kind: 'choice'; field: 'mode' | 'maxLevel' | 'minLevel' | 'manualLevel' | 'aiClassification'; value: string }
   | { kind: 'toggle'; field: 'autoEscalation' | 'showDecision' | 'showStatusLine' | 'learnFromOverrides'; value: boolean }
   | { kind: 'settings' }
   | { kind: 'reset-stats' }
   | { kind: 'reset-learning' }
   | { kind: 'error'; message: string }
 
-const CHOICE_FIELDS: Record<string, { field: 'mode' | 'maxLevel' | 'minLevel' | 'priority' | 'manualLevel' | 'aiClassification'; allowed: readonly string[] }> = {
+const CHOICE_FIELDS: Record<string, { field: 'mode' | 'maxLevel' | 'minLevel' | 'manualLevel' | 'aiClassification'; allowed: readonly string[] }> = {
   mode: { field: 'mode', allowed: MODES },
   'max-level': { field: 'maxLevel', allowed: ['medium', 'high', 'xhigh', 'max'] },
   limit: { field: 'maxLevel', allowed: ['medium', 'high', 'xhigh', 'max'] },
   'min-level': { field: 'minLevel', allowed: ['low', 'medium', 'high'] },
   floor: { field: 'minLevel', allowed: ['low', 'medium', 'high'] },
-  priority: { field: 'priority', allowed: PRIORITIES },
   manual: { field: 'manualLevel', allowed: ['session', ...LEVELS] },
   ai: { field: 'aiClassification', allowed: AI_MODES },
 }

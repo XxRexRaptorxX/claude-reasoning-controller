@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 – 2026-11-19
+
+- Working mode and cost/time priority are one setting now: **AUTO**, **SPEED** (one level lower, at most HIGH), **QUALITY** (one level higher, at least MEDIUM) and **MANUAL**. The priority setting, `/reasoning priority` and the BALANCED mode are gone; for "never MAX" set `/reasoning max-level xhigh`. A stored BALANCED mode reads as AUTO.
+- QUALITY FIRST and SPEED FIRST are now called QUALITY and SPEED.
+- AI classification defaults to `unclear`: Claude Code's small model is asked only when the local analysis is unsure. `/reasoning ai off` turns it off.
+- Desktop app: a ⚙ button before the status line opens the settings.
+- 172 tests.
+
 ## 0.7.0 – 2026-11-18
 
 - New status line: `Mode ◆ AUTO  ·  Reasoning ▰▰▰▱▱ HIGH  ·  Limit MAX`, with an icon per mode (◆ AUTO, ⚖ BALANCED, ★ QUALITY FIRST, ⚡ SPEED FIRST, ✋ MANUAL) and a five-step meter in effort-cycle's colours (LOW grey, MEDIUM green, HIGH yellow, XHIGH orange, MAX red).

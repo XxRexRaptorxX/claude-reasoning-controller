@@ -1,6 +1,6 @@
 {
   "name": "reasoning-controller",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Adaptive Reasoning Controller: picks the right effort level (low to max) for every task and actually sends it with each model request via turn.step.",
   "author": { "name": "XxRexRaptorxX", "url": "https://github.com/XxRexRaptorxX" },
   "homepage": "https://github.com/XxRexRaptorxX/claude-reasoning-controller#readme",
@@ -12,8 +12,8 @@
     "mode": {
       "type": "string",
       "title": "Reasoning: working mode",
-      "description": "auto = level per task; balanced = balanced (no MAX); quality = quality first; speed = speed first; manual = fixed level (see manualLevel).",
-      "options": ["auto", "balanced", "quality", "speed", "manual"],
+      "description": "auto = level per task as analysed; speed = one level lower, at most HIGH; quality = one level higher, at least MEDIUM; manual = fixed level (see manualLevel).",
+      "options": ["auto", "speed", "quality", "manual"],
       "default": "auto"
     },
     "maxLevel": {
@@ -29,13 +29,6 @@
       "description": "The lowest level the controller may choose on its own.",
       "options": ["low", "medium", "high"],
       "default": "low"
-    },
-    "priority": {
-      "type": "string",
-      "title": "Reasoning: cost/time priority",
-      "description": "efficiency = maximum efficiency; balanced = balanced; quality = maximum quality. Applies in auto mode.",
-      "options": ["efficiency", "balanced", "quality"],
-      "default": "balanced"
     },
     "manualLevel": {
       "type": "string",
@@ -61,7 +54,7 @@
       "title": "Reasoning: AI classification",
       "description": "Lets Claude Code's small, fast model choose the level. off = local analysis only; unclear = only when the local analysis is unsure; always = before every new task (one short request and a little latency per task). Limits and modes still apply.",
       "options": ["off", "unclear", "always"],
-      "default": "off"
+      "default": "unclear"
     },
     "showStatusLine": {
       "type": "boolean",
